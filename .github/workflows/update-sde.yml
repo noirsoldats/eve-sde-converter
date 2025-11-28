@@ -1,0 +1,191 @@
+name: Update EVE SDE and Release DBs
+
+on:
+  schedule:
+    # Run once per day at 12:00 UTC
+    - cron: "0 12 * * *"
+  workflow_dispatch:       # optional manual trigger
+
+jobs:
+  check-and-update-sde:
+    runs-on: ubuntu-latest
+
+    # Only run this job on main
+    if: github.ref == 'refs/heads/main'
+
+    outputs:
+      update_needed: ${{ steps.compare.outputs.update_needed }}
+      latest_build:  ${{ steps.get_latest_sde.outputs.latest_build }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 1) Try to download artifact with previous build number
+      - name: Download previous build artifact
+        id: download_prev
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-build-info
+          path: prev-build
+        continue-on-error: true
+
+      - name: Read previous build number from artifact (if exists)
+        id: get_previous_sde
+        run: |
+          if [ -d "prev-build" ] && [ -f "prev-build/sde_build.txt" ]; then
+            previous_build=$(cat prev-build/sde_build.txt | tr -d ' \n\r')
+          else
+            previous_build=""
+          fi
+          echo "Previous SDE build number: '${previous_build}'"
+          echo "previous_build=${previous_build}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # 2) Fetch latest SDE build from CCP
+      - name: Get latest SDE build number from CCP
+        id: get_latest_sde
+        run: |
+          BASE="https://developers.eveonline.com/static-data"
+          curl -s "$BASE/tranquility/latest.jsonl" > latest.jsonl
+
+          python - << 'PYCODE'
+import os, json
+
+latest_build = None
+with open("latest.jsonl", "r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        rec = json.loads(line)
+        if rec.get("_key") == "sde":
+            latest_build = str(rec["buildNumber"])
+            break
+
+if not latest_build:
+    raise SystemExit("Could not find SDE buildNumber in latest.jsonl")
+
+print(f"Latest SDE build number: {latest_build}")
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+    out.write(f"latest_build={latest_build}\n")
+PYCODE
+        shell: bash
+
+      # 3) Compare previous vs latest
+      - name: Decide whether to update
+        id: compare
+        run: |
+          latest="${{ steps.get_latest_sde.outputs.latest_build }}"
+          previous="${{ steps.get_previous_sde.outputs.previous_build }}"
+
+          echo "Latest:   $latest"
+          echo "Previous: $previous"
+
+          if [ "$latest" != "$previous" ] && [ -n "$latest" ]; then
+            echo "SDE changed; update needed."
+            echo "update_needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No update needed."
+            echo "update_needed=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      # 4) Download and extract SDE if update needed
+      - name: Download SDE from CCP
+        if: steps.compare.outputs.update_needed == 'true'
+        run: |
+          BUILD="${{ steps.get_latest_sde.outputs.latest_build }}"
+          SDE_URL="https://developers.eveonline.com/static-data/tranquility/eve-online-static-data-${BUILD}-yaml.zip"
+          echo "Downloading SDE from: $SDE_URL"
+          curl -L -o sde.zip "$SDE_URL"
+
+          echo "Extracting SDE..."
+          unzip -q sde.zip
+
+          # Copy invVolumes CSV files to SDE directory
+          echo "Copying invVolumes CSV files..."
+          cp invVolumes1.csv sde/
+          cp invVolumes2.csv sde/
+
+          echo "SDE ready at: sde/"
+          ls -la sde/
+
+      # 5) Run Load.py to generate eve.db & eve-stripped.db
+      - name: Run Load.py for new SDE
+        if: steps.compare.outputs.update_needed == 'true'
+        run: |
+          echo "Running Load.py for latest SDE..."
+          python3 Load.py sqlite en --create-stripped
+
+      # 6) Save current build number as an artifact for next time
+      - name: Save current build number artifact
+        if: steps.compare.outputs.update_needed == 'true'
+        run: |
+          mkdir -p build-info
+          echo "${{ steps.get_latest_sde.outputs.latest_build }}" > build-info/sde_build.txt
+        shell: bash
+
+      - name: Upload build info artifact
+        if: steps.compare.outputs.update_needed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-build-info
+          path: build-info/sde_build.txt
+          retention-days: 90
+
+      # 7) Upload DBs as artifact for the release job
+      - name: Upload DB artifacts
+        if: steps.compare.outputs.update_needed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-databases
+          path: |
+            eve.db
+            eve-stripped.db
+          retention-days: 7
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: check-and-update-sde
+
+    # Only create a release if an update is needed AND we're on main
+    if: needs.check-and-update-sde.outputs.update_needed == 'true' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download DB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-databases
+          path: .
+
+      # Now eve.db and eve-stripped.db are present
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sde-${{ needs.check-and-update-sde.outputs.latest_build }}
+          name: SDE ${{ needs.check-and-update-sde.outputs.latest_build }} SQLite
+          draft: false
+          prerelease: false
+          files: |
+            eve.db
+            eve-stripped.db
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
