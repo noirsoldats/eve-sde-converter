@@ -118,9 +118,9 @@ def importyaml(connection, metadata, sourcePath, language='en'):
                         mapSolarSystems.select().where(mapSolarSystems.c.solarSystemID == solarSystemID)
                     ).fetchone()
                     if result:
-                        constellationID = result['constellationID']
-                        regionID = result['regionID']
-                        security = result['security']
+                        constellationID = result.constellationID
+                        regionID = result.regionID
+                        security = result.security
                 except:
                     pass
 

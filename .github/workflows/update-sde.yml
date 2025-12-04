@@ -16,10 +16,24 @@ jobs:
     outputs:
       update_needed: ${{ steps.compare.outputs.update_needed }}
       latest_build:  ${{ steps.get_latest_sde.outputs.latest_build }}
+      version_tag:   ${{ steps.release_version.outputs.version_tag }}
+      version_name:  ${{ steps.release_version.outputs.version_name }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Detect trigger type
+        id: trigger_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Trigger: Manual (workflow_dispatch)"
+            echo "is_manual=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Trigger: Automatic (schedule)"
+            echo "is_manual=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,14 +58,19 @@ jobs:
           latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
 
           if [ -n "$latest_tag" ]; then
-            # Extract build number from tag (format: sde-{buildNumber})
-            previous_build="${latest_tag#sde-}"
+            # Extract build number from tag (format: sde-{buildNumber} or sde-{buildNumber}.{patch})
+            # Remove 'sde-' prefix
+            version_part="${latest_tag#sde-}"
+            # Extract base build number (remove .XX patch if present)
+            previous_build="${version_part%%.*}"
           else
             previous_build=""
           fi
 
+          echo "Latest release tag: '${latest_tag}'"
           echo "Previous SDE build number: '${previous_build}'"
           echo "previous_build=${previous_build}" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=${latest_tag}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -86,22 +105,88 @@ jobs:
           PYCODE
         shell: bash
 
-      # 3) Compare previous vs latest
+      # 3) Get all release tags (for manual patch calculation)
+      - name: Get all release tags
+        id: get_all_tags
+        if: steps.trigger_type.outputs.is_manual == 'true'
+        run: |
+          tags=$(gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null || echo "")
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$tags" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+
+      # 4) Calculate patch number for manual rebuild
+      - name: Calculate patch number for manual rebuild
+        id: calculate_patch
+        if: steps.trigger_type.outputs.is_manual == 'true'
+        run: |
+          BUILD="${{ steps.get_latest_sde.outputs.latest_build }}"
+
+          python3 << 'PYCODE'
+          import os, re
+
+          build_number = os.environ.get("BUILD", "")
+          all_tags = os.environ.get("ALL_TAGS", "").strip().split("\n")
+
+          # Pattern: sde-{BUILD}.{PATCH}
+          pattern = rf"^sde-{re.escape(build_number)}\.(\d+)$"
+
+          highest_patch = 0
+          for tag in all_tags:
+            tag = tag.strip()
+            if not tag:
+              continue
+            match = re.match(pattern, tag)
+            if match:
+              patch_num = int(match.group(1))
+              if patch_num > highest_patch:
+                highest_patch = patch_num
+
+          # Increment to get next patch number
+          next_patch = highest_patch + 1
+
+          # Format as zero-padded 2-digit number
+          patch_str = f"{next_patch:02d}"
+
+          print(f"Highest existing patch for build {build_number}: {highest_patch}")
+          print(f"Next patch number: {patch_str}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+            out.write(f"patch_number={patch_str}\n")
+          PYCODE
+        env:
+          BUILD: ${{ steps.get_latest_sde.outputs.latest_build }}
+          ALL_TAGS: ${{ steps.get_all_tags.outputs.tags }}
+        shell: bash
+
+      # 5) Compare previous vs latest
       - name: Decide whether to update
         id: compare
         run: |
           latest="${{ steps.get_latest_sde.outputs.latest_build }}"
           previous="${{ steps.get_previous_sde.outputs.previous_build }}"
+          is_manual="${{ steps.trigger_type.outputs.is_manual }}"
 
           echo "Latest:   $latest"
           echo "Previous: $previous"
+          echo "Trigger:  $([ "$is_manual" = "true" ] && echo "Manual" || echo "Automatic")"
 
-          if [ "$latest" != "$previous" ] && [ -n "$latest" ]; then
-            echo "SDE changed; update needed."
+          if [ "$is_manual" = "true" ]; then
+            # Manual trigger: ALWAYS rebuild, regardless of build number
+            echo "Manual trigger: Update required for patch release."
             echo "update_needed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No update needed."
-            echo "update_needed=false" >> "$GITHUB_OUTPUT"
+            # Automatic trigger: Only if build number changed
+            if [ "$latest" != "$previous" ] && [ -n "$latest" ]; then
+              echo "SDE build changed; update needed."
+              echo "update_needed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "No build change; no update needed."
+              echo "update_needed=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
         shell: bash
 
@@ -132,7 +217,31 @@ jobs:
           echo "Running Load.py for latest SDE..."
           python3 Load.py sqlite en --create-stripped
 
-      # 6) Upload DBs as artifact for the release job
+      # 6) Determine release version
+      - name: Determine release version
+        id: release_version
+        if: steps.compare.outputs.update_needed == 'true'
+        run: |
+          BUILD="${{ steps.get_latest_sde.outputs.latest_build }}"
+          IS_MANUAL="${{ steps.trigger_type.outputs.is_manual }}"
+
+          if [ "$IS_MANUAL" = "true" ]; then
+            PATCH="${{ steps.calculate_patch.outputs.patch_number }}"
+            VERSION_TAG="sde-${BUILD}.${PATCH}"
+            VERSION_NAME="SDE ${BUILD}.${PATCH} SQLite (Patch Release)"
+          else
+            VERSION_TAG="sde-${BUILD}"
+            VERSION_NAME="SDE ${BUILD} SQLite"
+          fi
+
+          echo "Release tag:  $VERSION_TAG"
+          echo "Release name: $VERSION_NAME"
+
+          echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # 7) Upload DBs as artifact for the release job
       - name: Upload DB artifacts
         if: steps.compare.outputs.update_needed == 'true'
         uses: actions/upload-artifact@v4
@@ -163,10 +272,19 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: sde-${{ needs.check-and-update-sde.outputs.latest_build }}
-          name: SDE ${{ needs.check-and-update-sde.outputs.latest_build }} SQLite
+          tag_name: ${{ needs.check-and-update-sde.outputs.version_tag }}
+          name: ${{ needs.check-and-update-sde.outputs.version_name }}
           draft: false
           prerelease: false
+          body: |
+            EVE Online Static Data Export databases (SQLite format).
+
+            **Build Number:** ${{ needs.check-and-update-sde.outputs.latest_build }}
+            **Trigger:** ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Automatic' }}
+
+            Contains:
+            - `eve.db` - Full database with all SDE data
+            - `eve-stripped.db` - Stripped database with essential tables only
           files: |
             eve.db
             eve-stripped.db
