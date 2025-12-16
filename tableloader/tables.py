@@ -42,8 +42,6 @@ def metadataCreator(schema):
            Column('agentID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('typeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False,index=True),
             schema=schema
-
-
     )
 
 
@@ -53,8 +51,6 @@ def metadataCreator(schema):
             Column('groupID', INTEGER()),
             Column('name', VARCHAR(length=255)),
             schema=schema
-
-
     )
 
 
@@ -63,7 +59,6 @@ def metadataCreator(schema):
             Column('masteryLevel', INTEGER()),
             Column('certID', INTEGER()),
             schema=schema
-
     )
 
 
@@ -74,8 +69,6 @@ def metadataCreator(schema):
             Column('skillLevel', INTEGER()),
             Column('certLevelText', VARCHAR(length=8)),
             schema=schema
-
-
     )
 
 
@@ -92,8 +85,6 @@ def metadataCreator(schema):
             Column('iconID', INTEGER()),
             Column('shortDescription', VARCHAR(length=500)),
             schema=schema
-
-
     )
 
 
@@ -105,8 +96,6 @@ def metadataCreator(schema):
             Column('shortDescription', VARCHAR(length=500)),
             Column('notes', VARCHAR(length=500)),
             schema=schema
-
-
     )
 
 
@@ -129,8 +118,6 @@ def metadataCreator(schema):
             Column('shortMaleDescription', VARCHAR(length=500)),
             Column('shortFemaleDescription', VARCHAR(length=500)),
             schema=schema
-
-
     )
 
 
@@ -147,8 +134,6 @@ def metadataCreator(schema):
             Column('militiaCorporationID', INTEGER()),
             Column('iconID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -167,8 +152,6 @@ def metadataCreator(schema):
             Column('activityName', VARCHAR(length=100)),
             Column('description', VARCHAR(length=1000)),
             schema=schema
-
-
     )
 
 
@@ -177,8 +160,6 @@ def metadataCreator(schema):
             Column('divisionID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('size', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -186,8 +167,6 @@ def metadataCreator(schema):
             Column('skillID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('corporationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             schema=schema
-
-
     )
 
 
@@ -195,8 +174,6 @@ def metadataCreator(schema):
             Column('corporationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('typeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             schema=schema
-
-
     )
 
 
@@ -231,7 +208,7 @@ def metadataCreator(schema):
             Column('description', VARCHAR(length=4000)),
             Column('iconID', INTEGER()),
             schema=schema
-            )
+    )
 
 
     crpNPCDivisions =  Table('crpNPCDivisions', metadata,
@@ -240,8 +217,6 @@ def metadataCreator(schema):
             Column('description', VARCHAR(length=1000)),
             Column('leaderType', VARCHAR(length=100)),
             schema=schema
-
-
     )
 
 
@@ -250,8 +225,6 @@ def metadataCreator(schema):
             Column('categoryName', VARCHAR(length=50)),
             Column('categoryDescription', VARCHAR(length=200)),
             schema=schema
-
-
     )
 
 
@@ -268,8 +241,6 @@ def metadataCreator(schema):
             Column('highIsGood', Boolean(name='dat_hig')),
             Column('categoryID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -303,8 +274,6 @@ def metadataCreator(schema):
             Column('fittingUsageChanceAttributeID', INTEGER()),
             Column('modifierInfo',UnicodeText()),
             schema=schema
-
-
     )
 
 
@@ -320,8 +289,6 @@ def metadataCreator(schema):
             Column('expressionGroupID', INTEGER()),
             Column('expressionAttributeID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -331,8 +298,6 @@ def metadataCreator(schema):
             Column('valueInt', INTEGER()),
             Column('valueFloat', FLOAT()),
             schema=schema
-
-
     )
 
 
@@ -341,8 +306,6 @@ def metadataCreator(schema):
             Column('effectID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('isDefault', Boolean(name='dte_default')),
             schema=schema
-
-
     )
 
 
@@ -354,8 +317,6 @@ def metadataCreator(schema):
             Column('sofRaceName', VARCHAR(length=100)),
             Column('description',UnicodeText()),
             schema=schema
-
-
     )
 
 
@@ -364,8 +325,6 @@ def metadataCreator(schema):
             Column('iconFile', VARCHAR(length=500)),
             Column('description',UnicodeText()),
             schema=schema
-
-
     )
 
 
@@ -375,8 +334,6 @@ def metadataCreator(schema):
             Column('displayName', VARCHAR(length=50)),
             Column('description', VARCHAR(length=1000)),
             schema=schema
-
-
     )
 
 
@@ -404,8 +361,6 @@ def metadataCreator(schema):
             Column('productTypeID', INTEGER(),index=True),
             Column('probability', DECIMAL(precision=3, scale=2)),
             schema=schema
-
-
     )
 
 
@@ -415,8 +370,6 @@ def metadataCreator(schema):
             Column('productTypeID', INTEGER(),index=True),
             Column('quantity', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -426,8 +379,6 @@ def metadataCreator(schema):
             Column('productTypeID', INTEGER(),index=True),
             Column('raceID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -444,8 +395,6 @@ def metadataCreator(schema):
             Column('typeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('maxProductionLimit', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -455,8 +404,6 @@ def metadataCreator(schema):
             Column('iconID', INTEGER()),
             Column('published', Boolean(name='invcat_published')),
             schema=schema
-
-
     )
 
 
@@ -468,8 +415,6 @@ def metadataCreator(schema):
             Column('fineByValue', FLOAT(precision=53)),
             Column('attackMinSec', FLOAT(precision=53)),
             schema=schema
-
-
     )
 
 
@@ -477,8 +422,6 @@ def metadataCreator(schema):
             Column('purpose', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('purposeText', VARCHAR(length=100)),
             schema=schema
-
-
     )
 
 
@@ -490,8 +433,6 @@ def metadataCreator(schema):
             Column('minSecurityLevel', FLOAT(precision=53)),
             Column('factionID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -501,8 +442,6 @@ def metadataCreator(schema):
             Column('flagText', VARCHAR(length=100)),
             Column('orderID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -517,8 +456,6 @@ def metadataCreator(schema):
             Column('fittableNonSingleton', Boolean(name='invgroup_fitnonsingle')),
             Column('published', Boolean(name='invgroup_published')),
             schema=schema
-
-
     )
 
 
@@ -542,8 +479,6 @@ def metadataCreator(schema):
             Column('iconID', INTEGER()),
             Column('hasTypes', Boolean(name='invmarketgroups_hastypes')),
             schema=schema
-
-
     )
 
 
@@ -553,8 +488,6 @@ def metadataCreator(schema):
             Column('description', VARCHAR(length=1000)),
             Column('iconID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -563,8 +496,6 @@ def metadataCreator(schema):
             Column('parentTypeID', INTEGER()),
             Column('metaGroupID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -572,8 +503,6 @@ def metadataCreator(schema):
             Column('itemID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('itemName', VARCHAR(length=200), nullable=False),
             schema=schema
-
-
     )
 
 
@@ -586,8 +515,6 @@ def metadataCreator(schema):
             Column('pitch', FLOAT(precision=24)),
             Column('roll', FLOAT(precision=24)),
             schema=schema
-
-
     )
 
 
@@ -607,8 +534,6 @@ def metadataCreator(schema):
             Column('materialTypeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('quantity', INTEGER(), nullable=False, default=text(u"'0'")),
             schema=schema
-
-
     )
 
 
@@ -618,8 +543,6 @@ def metadataCreator(schema):
             Column('typeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('quantity', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -640,8 +563,6 @@ def metadataCreator(schema):
             Column('soundID', INTEGER()),
             Column('graphicID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -683,8 +604,6 @@ def metadataCreator(schema):
             Column('radius', FLOAT(precision=53)),
             Column('mass', INTEGER()),
             schema=schema
-
-
     )
 
     mapCelestialGraphics = Table('mapCelestialGraphics', metadata,
@@ -703,8 +622,6 @@ def metadataCreator(schema):
             Column('toConstellationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('toRegionID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -724,8 +641,6 @@ def metadataCreator(schema):
             Column('factionID', INTEGER()),
             Column('radius', FLOAT()),
             schema=schema
-
-
     )
 
 
@@ -758,8 +673,6 @@ def metadataCreator(schema):
             Column('stargateID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('destinationID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -773,8 +686,6 @@ def metadataCreator(schema):
             Column('z', FLOAT(precision=53)),
             Column('iconID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -782,8 +693,6 @@ def metadataCreator(schema):
             Column('locationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('graphicID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -791,8 +700,6 @@ def metadataCreator(schema):
             Column('locationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('wormholeClassID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -800,8 +707,6 @@ def metadataCreator(schema):
             Column('fromRegionID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('toRegionID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             schema=schema
-
-
     )
 
 
@@ -821,8 +726,6 @@ def metadataCreator(schema):
             Column('nebula', INTEGER()),
             Column('radius', FLOAT()),
             schema=schema
-
-
     )
 
 
@@ -834,8 +737,6 @@ def metadataCreator(schema):
             Column('toConstellationID', INTEGER()),
             Column('toRegionID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -931,8 +832,6 @@ def metadataCreator(schema):
             Column('solarSystemID', INTEGER(),index=True),
             Column('regionID', INTEGER(),index=True),
             schema=schema
-
-
     )
 
 
@@ -967,8 +866,6 @@ def metadataCreator(schema):
             Column('activityID', INTEGER()),
             Column('minCostPerHour', FLOAT(precision=53)),
             schema=schema
-
-
     )
 
 
@@ -977,8 +874,6 @@ def metadataCreator(schema):
             Column('assemblyLineTypeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('quantity', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -987,8 +882,6 @@ def metadataCreator(schema):
             Column('duration', INTEGER()),
             Column('skinID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -997,8 +890,6 @@ def metadataCreator(schema):
             Column('displayName', INTEGER()),
             Column('materialSetID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1006,8 +897,6 @@ def metadataCreator(schema):
             Column('skinID', INTEGER(),index=True),
             Column('typeID', INTEGER(),index=True),
             schema=schema
-
-
     )
 
 
@@ -1016,8 +905,6 @@ def metadataCreator(schema):
             Column('internalName', VARCHAR(length=70)),
             Column('skinMaterialID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1025,8 +912,6 @@ def metadataCreator(schema):
             Column('operationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('serviceID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             schema=schema
-
-
     )
 
 
@@ -1046,8 +931,6 @@ def metadataCreator(schema):
             Column('gallenteStationTypeID', INTEGER()),
             Column('joveStationTypeID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1056,8 +939,6 @@ def metadataCreator(schema):
             Column('serviceName', VARCHAR(length=100)),
             Column('description', VARCHAR(length=1000)),
             schema=schema
-
-
     )
 
 
@@ -1074,8 +955,6 @@ def metadataCreator(schema):
             Column('reprocessingEfficiency', FLOAT(precision=53)),
             Column('conquerable', Boolean(name='stastat_conq')),
             schema=schema
-
-
     )
 
 
@@ -1099,8 +978,6 @@ def metadataCreator(schema):
             Column('reprocessingStationsTake', FLOAT(precision=53)),
             Column('reprocessingHangarFlag', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1111,8 +988,6 @@ def metadataCreator(schema):
             Column('tcGroupID', INTEGER()),
             Column('tcID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1123,8 +998,6 @@ def metadataCreator(schema):
             Column('columnName', VARCHAR(length=128), nullable=False),
             Column('masterID', VARCHAR(length=128)),
             schema=schema
-
-
     )
 
 
@@ -1133,8 +1006,6 @@ def metadataCreator(schema):
             Column('languageID', VARCHAR(length=50)),
             Column('languageName', VARCHAR(length=200)),
             schema=schema
-
-
     )
 
 
@@ -1144,8 +1015,6 @@ def metadataCreator(schema):
             Column('languageID', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
             Column('text',UnicodeText(), nullable=False),
             schema=schema
-
-
     )
 
 
@@ -1153,8 +1022,6 @@ def metadataCreator(schema):
             Column('solarSystemID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('combatZoneID', INTEGER()),
             schema=schema
-
-
     )
 
 
@@ -1165,8 +1032,26 @@ def metadataCreator(schema):
             Column('centerSystemID', INTEGER()),
             Column('description', VARCHAR(length=500)),
             schema=schema
+    )
 
 
+    rigIndustryModifierSources = Table('rigIndustryModifierSources', metadata,
+            Column('rigTypeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('activityKey', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
+            Column('bonusType', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
+            Column('dogmaAttributeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('filterID', INTEGER(), primary_key=True, autoincrement=False, nullable=True),
+            schema=schema
+    )
+
+
+    rigAffectedProductGroups = Table('rigAffectedProductGroups', metadata,
+            Column('rigTypeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('activityKey', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
+            Column('bonusType', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
+            Column('productGroupID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('filterID', INTEGER(), primary_key=True, autoincrement=False, nullable=True),
+            schema=schema
     )
 
     return metadata

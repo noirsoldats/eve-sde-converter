@@ -55,7 +55,6 @@ metadata.create_all(engine,checkfirst=True)
 
 print("created")
 
-import tableloader.tableFunctions
 
 factions.importyaml(connection,metadata,sourcePath,language)
 ancestries.importyaml(connection,metadata,sourcePath,language)
@@ -87,6 +86,7 @@ universe.importyaml(connection,metadata,sourcePath,language)
 universe.buildJumps(connection,database)
 stations.importyaml(connection,metadata,sourcePath,language)
 universe.fixStationNames(connection,metadata)
+rigAffectedProductGroups.importRigMappings(connection,metadata)
 
 # Close connections before file operations
 connection.close()
@@ -106,11 +106,13 @@ def create_stripped_database(source_db_path='eve.db', dest_db_path='eve-stripped
         'invTypes', 'invGroups', 'invCategories', 'invMetaTypes', 'invVolumes',
         'industryActivityMaterials', 'industryActivityProducts', 'industryActivity',
         'industryActivityProbabilities', 'industryActivitySkills',
-        'dgmTypeAttributes', 'dgmAttributeTypes',
+        'dgmTypeAttributes', 'dgmAttributeTypes', 'dgmTypeEffects', 'dgmEffects',
+        'dgmAttributeCategories', 'dgmExpressions',
         'mapRegions', 'mapSolarSystems', 'staStations',
         'invTypeMaterials', 'invMarketGroups', 'industryBlueprints',
         'planetSchematics', 'planetSchematicsPinMap', 'planetSchematicsTypeMap',
-        'invTypeReactions'
+        'invTypeReactions',
+        'rigAffectedProductGroups', 'rigIndustryModifierSources'
     }
 
     # Check source exists

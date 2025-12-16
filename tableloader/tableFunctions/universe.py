@@ -408,3 +408,6 @@ def fixStationNames(connection,metadata):
             print("No stations found in staStations table")
     except Exception as e:
         print(f"Could not check staStations: {e}")
+
+    # Commit transaction (query above triggered autobegin)
+    connection.commit()
