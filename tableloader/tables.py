@@ -768,6 +768,8 @@ def metadataCreator(schema):
             Column('sunTypeID', INTEGER()),
             Column('starID', INTEGER()),
             Column('securityClass', VARCHAR(length=2)),
+            Column('x2D', FLOAT(precision=53)),
+            Column('y2D', FLOAT(precision=53)),
             schema=schema
     )
 

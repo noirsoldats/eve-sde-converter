@@ -138,6 +138,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             solarSystemName = name_data.get(language, '') if isinstance(name_data, dict) else str(name_data)
 
             position = system.get('position', {})
+            position2D = system.get('position2D', {})
 
             connection.execute(mapSolarSystems.insert().values(
                 solarSystemID=solarSystemID,
@@ -166,7 +167,9 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 radius=system.get('radius'),
                 sunTypeID=None,
                 starID=system.get('starID'),
-                securityClass=system.get('securityClass')
+                securityClass=system.get('securityClass'),
+                x2D=position2D.get('x'),
+                y2D=position2D.get('y')
             ))
 
     connection.commit()
