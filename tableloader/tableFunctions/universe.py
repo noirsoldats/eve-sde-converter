@@ -13,8 +13,28 @@ from sqlalchemy import Table,select,text
 import glob
 
 typeidcache={}
+group_name_cache={}
 
-def grouplookup(connection,metadata,typeid):
+def get_group_id_by_name(connection, metadata, group_name):
+    if group_name in group_name_cache:
+        return group_name_cache[group_name]
+
+    invGroups = Table('invGroups', metadata)
+    try:
+        # Use select generic sqlalchemy
+        row = connection.execute(
+            select(invGroups.c.groupID).where(invGroups.c.groupName == group_name)
+        ).fetchone()
+        if row:
+            id = row[0]
+            group_name_cache[group_name] = id
+            return id
+    except Exception as e:
+        print(f"Warning: Could not resolve group ID for '{group_name}': {e}")
+    
+    return None
+
+def grouplookup(connection,metadata,typeid,defaultid=None):
 
     if typeidcache.get(typeid):
         return typeidcache.get(typeid)
@@ -25,8 +45,12 @@ def grouplookup(connection,metadata,typeid):
                 invTypes.select().where( invTypes.c.typeID == typeid )
             ).fetchall()[0]['groupID']
     except:
-        print("Group lookup failed on typeid {}".format(typeid))
-        groupid=-1
+        if defaultid is not None:
+             # Silence error if we have a valid default (expected behavior for some system types)
+             groupid=defaultid
+        else:
+             print("Group lookup failed on typeid {}".format(typeid))
+             groupid=-1
     typeidcache[typeid]=groupid
     return groupid
 
@@ -57,10 +81,17 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     mapSolarSystems = Table('mapSolarSystems', metadata)
     mapDenormalize = Table('mapDenormalize', metadata)
     mapJumps = Table('mapJumps', metadata)
+    
+    # Pre-resolve standard group IDs by name to handle missing TypeIDs in modern SDE
+    gid_stargate = get_group_id_by_name(connection, metadata, 'Stargate')
+    gid_planet = get_group_id_by_name(connection, metadata, 'Planet')
+    gid_moon = get_group_id_by_name(connection, metadata, 'Moon')
+    gid_asteroid = get_group_id_by_name(connection, metadata, 'Asteroid Belt')
+    gid_sun = get_group_id_by_name(connection, metadata, 'Sun')
 
     # Import regions
     print("Importing regions from mapRegions.yaml")
-    with open(os.path.join(sourcePath, 'mapRegions.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'mapRegions.yaml'), 'r', encoding='utf-8') as yamlstream:
         regions = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(regions)} regions")
 
@@ -95,7 +126,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
     # Import constellations
     print("Importing constellations from mapConstellations.yaml")
-    with open(os.path.join(sourcePath, 'mapConstellations.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'mapConstellations.yaml'), 'r', encoding='utf-8') as yamlstream:
         constellations = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(constellations)} constellations")
 
@@ -128,7 +159,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
     # Import solar systems
     print("Importing solar systems from mapSolarSystems.yaml")
-    with open(os.path.join(sourcePath, 'mapSolarSystems.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'mapSolarSystems.yaml'), 'r', encoding='utf-8') as yamlstream:
         systems = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(systems)} solar systems")
 
@@ -178,7 +209,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     # Import stargates and populate mapJumps
     print("Importing stargates from mapStargates.yaml")
     try:
-        with open(os.path.join(sourcePath, 'mapStargates.yaml'), 'r') as yamlstream:
+        with open(os.path.join(sourcePath, 'mapStargates.yaml'), 'r', encoding='utf-8') as yamlstream:
             stargates = load(yamlstream, Loader=SafeLoader)
             print(f"Processing {len(stargates)} stargates")
 
@@ -198,7 +229,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 connection.execute(mapDenormalize.insert().values(
                     itemID=stargateID,
                     typeID=stargate.get('typeID'),
-                    groupID=grouplookup(connection, metadata, stargate.get('typeID')),
+                    groupID=grouplookup(connection, metadata, stargate.get('typeID'), defaultid=gid_stargate),
                     solarSystemID=stargate.get('solarSystemID'),
                     constellationID=None,  # Will be filled by denormalization
                     regionID=None,  # Will be filled by denormalization
@@ -221,7 +252,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     # Import planets
     print("Importing planets from mapPlanets.yaml")
     try:
-        with open(os.path.join(sourcePath, 'mapPlanets.yaml'), 'r') as yamlstream:
+        with open(os.path.join(sourcePath, 'mapPlanets.yaml'), 'r', encoding='utf-8') as yamlstream:
             planets = load(yamlstream, Loader=SafeLoader)
             print(f"Processing {len(planets)} planets")
 
@@ -230,7 +261,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 connection.execute(mapDenormalize.insert().values(
                     itemID=planetID,
                     typeID=planet.get('typeID'),
-                    groupID=grouplookup(connection, metadata, planet.get('typeID')),
+                    groupID=grouplookup(connection, metadata, planet.get('typeID'), defaultid=gid_planet),
                     solarSystemID=planet.get('solarSystemID'),
                     constellationID=None,
                     regionID=None,
@@ -253,7 +284,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     # Import moons
     print("Importing moons from mapMoons.yaml")
     try:
-        with open(os.path.join(sourcePath, 'mapMoons.yaml'), 'r') as yamlstream:
+        with open(os.path.join(sourcePath, 'mapMoons.yaml'), 'r', encoding='utf-8') as yamlstream:
             moons = load(yamlstream, Loader=SafeLoader)
             print(f"Processing {len(moons)} moons")
 
@@ -262,7 +293,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 connection.execute(mapDenormalize.insert().values(
                     itemID=moonID,
                     typeID=moon.get('typeID'),
-                    groupID=grouplookup(connection, metadata, moon.get('typeID')),
+                    groupID=grouplookup(connection, metadata, moon.get('typeID'), defaultid=gid_moon),
                     solarSystemID=moon.get('solarSystemID'),
                     constellationID=None,
                     regionID=None,
@@ -285,7 +316,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     # Import asteroid belts
     print("Importing asteroid belts from mapAsteroidBelts.yaml")
     try:
-        with open(os.path.join(sourcePath, 'mapAsteroidBelts.yaml'), 'r') as yamlstream:
+        with open(os.path.join(sourcePath, 'mapAsteroidBelts.yaml'), 'r', encoding='utf-8') as yamlstream:
             belts = load(yamlstream, Loader=SafeLoader)
             print(f"Processing {len(belts)} asteroid belts")
 
@@ -294,7 +325,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 connection.execute(mapDenormalize.insert().values(
                     itemID=beltID,
                     typeID=belt.get('typeID'),
-                    groupID=grouplookup(connection, metadata, belt.get('typeID')),
+                    groupID=grouplookup(connection, metadata, belt.get('typeID'), defaultid=gid_asteroid),
                     solarSystemID=belt.get('solarSystemID'),
                     constellationID=None,
                     regionID=None,
@@ -317,7 +348,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     # Import stars
     print("Importing stars from mapStars.yaml")
     try:
-        with open(os.path.join(sourcePath, 'mapStars.yaml'), 'r') as yamlstream:
+        with open(os.path.join(sourcePath, 'mapStars.yaml'), 'r', encoding='utf-8') as yamlstream:
             stars = load(yamlstream, Loader=SafeLoader)
             print(f"Processing {len(stars)} stars")
 
@@ -326,7 +357,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 connection.execute(mapDenormalize.insert().values(
                     itemID=starID,
                     typeID=star.get('typeID'),
-                    groupID=grouplookup(connection, metadata, star.get('typeID')),
+                    groupID=grouplookup(connection, metadata, star.get('typeID'), defaultid=gid_sun),
                     solarSystemID=star.get('solarSystemID'),
                     constellationID=None,
                     regionID=None,
