@@ -27,7 +27,7 @@ def importyaml(connection,metadata,sourcePath):
     print("importing Blueprints")
     print("opening Yaml")
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'blueprints.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'blueprints.yaml'),'r', encoding='utf-8') as yamlstream:
         blueprints=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
         for blueprint in blueprints:

@@ -18,7 +18,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     agtAgentTypes = Table('agtAgentTypes',metadata)
     print("Importing Agents")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'npcCharacters.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'npcCharacters.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         npcCharacters=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
@@ -38,7 +38,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     trans.commit()
     print("Importing AgentsInSpace")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'agentsInSpace.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'agentsInSpace.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         agents=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
@@ -53,7 +53,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     trans.commit()
     print("Importing research agents")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'npcCharacters.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'npcCharacters.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         npcCharacters=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
@@ -71,7 +71,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
     print("Importing agent types")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'agentTypes.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'agentTypes.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         agentTypes=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

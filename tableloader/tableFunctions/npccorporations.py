@@ -19,7 +19,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     print("opening Yaml")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'npcCorporations.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'npcCorporations.yaml'),'r', encoding='utf-8') as yamlstream:
         print("importing")
         npccorps=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

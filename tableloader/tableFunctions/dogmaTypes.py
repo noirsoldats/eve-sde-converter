@@ -24,7 +24,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     print("opening Yaml")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'typeDogma.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'typeDogma.yaml'),'r', encoding='utf-8') as yamlstream:
         print("importing")
         dogmaEffects=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

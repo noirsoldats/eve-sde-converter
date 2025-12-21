@@ -19,7 +19,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
     print("Importing Certificates")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'certificates.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'certificates.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         certificates=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

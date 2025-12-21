@@ -15,7 +15,7 @@ def importyaml(connection,metadata,sourcePath):
     eveGraphics = Table('eveGraphics',metadata)
     print("Importing Graphics")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'graphics.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'graphics.yaml'),'r', encoding='utf-8') as yamlstream:
         print("importing")
         trans = connection.begin()
         graphics=load(yamlstream,Loader=SafeLoader)

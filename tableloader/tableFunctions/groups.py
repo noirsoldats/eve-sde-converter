@@ -16,7 +16,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     trnTranslations = Table('trnTranslations',metadata)
     print("Importing Groups")
     print("opening Yaml")
-    with open(os.path.join(sourcePath,'groups.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'groups.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         groupids=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

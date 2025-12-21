@@ -20,7 +20,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     trans = connection.begin()
     print("Importing Skins")
     print("opening Yaml1")
-    with open(os.path.join(sourcePath,'skins.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'skins.yaml'),'r', encoding='utf-8') as yamlstream:
         skins=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
         for skinid in skins:
@@ -35,7 +35,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
 
     print("opening Yaml2")
-    with open(os.path.join(sourcePath,'skinLicenses.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'skinLicenses.yaml'),'r', encoding='utf-8') as yamlstream:
         skinlicenses=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
         for licenseid in skinlicenses:
@@ -44,7 +44,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                                 duration=skinlicenses[licenseid]['duration'],
                                 skinID=skinlicenses[licenseid]['skinID']))
     print("opening Yaml3")
-    with open(os.path.join(sourcePath,'skinMaterials.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'skinMaterials.yaml'),'r', encoding='utf-8') as yamlstream:
         skinmaterials=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
         for materialid in skinmaterials:

@@ -46,7 +46,7 @@ def importyaml(connection, metadata, sourcePath, language='en'):
 
     # Import Station Operations
     print("Importing station operations from stationOperations.yaml")
-    with open(os.path.join(sourcePath, 'stationOperations.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'stationOperations.yaml'), 'r', encoding='utf-8') as yamlstream:
         operations = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(operations)} operations")
 
@@ -93,7 +93,7 @@ def importyaml(connection, metadata, sourcePath, language='en'):
 
     # Import NPC Stations
     print("Importing NPC stations from npcStations.yaml")
-    with open(os.path.join(sourcePath, 'npcStations.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'npcStations.yaml'), 'r', encoding='utf-8') as yamlstream:
         stations = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(stations)} stations")
 
@@ -220,7 +220,7 @@ def importyaml(connection, metadata, sourcePath, language='en'):
 
     # Import Station Services
     print("Importing station services from stationServices.yaml")
-    with open(os.path.join(sourcePath, 'stationServices.yaml'), 'r') as yamlstream:
+    with open(os.path.join(sourcePath, 'stationServices.yaml'), 'r', encoding='utf-8') as yamlstream:
         services = load(yamlstream, Loader=SafeLoader)
         print(f"Processing {len(services)} services")
 

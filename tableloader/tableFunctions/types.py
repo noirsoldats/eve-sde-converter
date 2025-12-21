@@ -19,7 +19,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     invMetaTypes = Table('invMetaTypes',metadata)
     print("Importing Types")
     print("Opening Yaml")
-    with open(os.path.join(sourcePath,'types.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'types.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         typeids=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")

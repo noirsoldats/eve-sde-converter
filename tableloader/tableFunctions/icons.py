@@ -15,7 +15,7 @@ def importyaml(connection,metadata,sourcePath):
     eveIcons = Table('eveIcons',metadata)
     print("Importing Icons")
     print("Opening Yaml")
-    with open(os.path.join(sourcePath,'icons.yaml'),'r') as yamlstream:
+    with open(os.path.join(sourcePath,'icons.yaml'),'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         icons=load(yamlstream,Loader=SafeLoader)
         print("Yaml Processed into memory")
