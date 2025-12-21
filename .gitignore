@@ -1,6 +1,7 @@
 sde/
 # venv
 .venv/
+.cache_hoboleaks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
