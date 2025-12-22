@@ -45,15 +45,6 @@ def metadataCreator(schema):
     )
 
 
-    certCerts =  Table('certCerts', metadata,
-            Column('certID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
-            Column('description',UnicodeText()),
-            Column('groupID', INTEGER()),
-            Column('name', VARCHAR(length=255)),
-            schema=schema
-    )
-
-
     certMasteries =  Table('certMasteries', metadata,
             Column('typeID', INTEGER()),
             Column('masteryLevel', INTEGER()),
