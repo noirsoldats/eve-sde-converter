@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-from yaml import load, dump
+from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 import os
-import sys
 from sqlalchemy import Table
 
 def importyaml(connection,metadata,sourcePath,language='en'):
@@ -18,11 +15,18 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     invTraits = Table('invTraits',metadata)
     invMetaTypes = Table('invMetaTypes',metadata)
     print("Importing Types")
-    print("Opening Yaml")
-    with open(os.path.join(sourcePath,'types.yaml'),'r', encoding='utf-8') as yamlstream:
+
+    targetPath = os.path.join(sourcePath, 'types.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'types.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'types.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         typeids=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(typeids)} types")
         for typeid in typeids:
             connection.execute(invTypes.insert().values(
                             typeID=typeid,
@@ -94,3 +98,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             if 'metaGroupID' in typeids[typeid] or 'variationParentTypeID' in typeids[typeid]:
                 connection.execute(invMetaTypes.insert().values(typeID=typeid,metaGroupID=typeids[typeid].get('metaGroupID'),parentTypeID=typeids[typeid].get('variationParentTypeID')))
     trans.commit()
+    print("  Done")

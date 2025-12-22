@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
-import sys
-from yaml import load, dump
+from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 import os
-from sqlalchemy import Table,select,text
-import glob
+from sqlalchemy import Table, select, text
 
 typeidcache={}
 group_name_cache={}
@@ -73,7 +69,7 @@ def get_sorted_objects(planet, key):
 def importyaml(connection,metadata,sourcePath,language='en'):
     """Import universe data from new consolidated YAML files"""
 
-    print("Importing universe data")
+    print("Importing Universe")
 
     # Get table references
     mapRegions = Table('mapRegions', metadata)
@@ -89,11 +85,18 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     gid_asteroid = get_group_id_by_name(connection, metadata, 'Asteroid Belt')
     gid_sun = get_group_id_by_name(connection, metadata, 'Sun')
 
-    # Import regions
-    print("Importing regions from mapRegions.yaml")
-    with open(os.path.join(sourcePath, 'mapRegions.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing Regions")
+
+    targetPath = os.path.join(sourcePath, 'mapRegions.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'mapRegions.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapRegions.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         regions = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(regions)} regions")
+        print(f"  Processing {len(regions)} regions")
 
         for regionID, region in regions.items():
             # Extract name based on language
@@ -122,13 +125,19 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             ))
 
     connection.commit()
-    print(f"Imported {len(regions)} regions")
+    print("  Done")
 
-    # Import constellations
-    print("Importing constellations from mapConstellations.yaml")
-    with open(os.path.join(sourcePath, 'mapConstellations.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing Constellations")
+    targetPath = os.path.join(sourcePath, 'mapConstellations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'mapConstellations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapConstellations.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         constellations = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(constellations)} constellations")
+        print(f"  Processing {len(constellations)} constellations")
 
         for constellationID, constellation in constellations.items():
             # Extract name based on language
@@ -155,13 +164,19 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             ))
 
     connection.commit()
-    print(f"Imported {len(constellations)} constellations")
+    print("  Done")
 
-    # Import solar systems
-    print("Importing solar systems from mapSolarSystems.yaml")
-    with open(os.path.join(sourcePath, 'mapSolarSystems.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing Solar Systems")
+    targetPath = os.path.join(sourcePath, 'mapSolarSystems.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'mapSolarSystems.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapSolarSystems.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         systems = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(systems)} solar systems")
+        print(f"  Processing {len(systems)} solar systems")
 
         for solarSystemID, system in systems.items():
             # Extract name based on language
@@ -204,14 +219,20 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             ))
 
     connection.commit()
-    print(f"Imported {len(systems)} solar systems")
+    print("  Done")
 
-    # Import stargates and populate mapJumps
-    print("Importing stargates from mapStargates.yaml")
+    print("Importing Stargates")
     try:
-        with open(os.path.join(sourcePath, 'mapStargates.yaml'), 'r', encoding='utf-8') as yamlstream:
+        targetPath = os.path.join(sourcePath, 'mapStargates.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'fsd', 'mapStargates.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapStargates.yaml')
+
+        print(f"  Opening {targetPath}")
+        with open(targetPath, 'r', encoding='utf-8') as yamlstream:
             stargates = load(yamlstream, Loader=SafeLoader)
-            print(f"Processing {len(stargates)} stargates")
+            print(f"  Processing {len(stargates)} stargates")
 
             for stargateID, stargate in stargates.items():
                 # Add to mapJumps for navigation
@@ -245,16 +266,22 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 ))
 
         connection.commit()
-        print(f"Imported {len(stargates)} stargates and jump connections")
+        print("  Done")
     except FileNotFoundError:
-        print("Warning: mapStargates.yaml not found, skipping stargate import")
+        print("  Warning: mapStargates.yaml not found, skipping")
 
-    # Import planets
-    print("Importing planets from mapPlanets.yaml")
+    print("Importing Planets")
     try:
-        with open(os.path.join(sourcePath, 'mapPlanets.yaml'), 'r', encoding='utf-8') as yamlstream:
+        targetPath = os.path.join(sourcePath, 'mapPlanets.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'fsd', 'mapPlanets.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapPlanets.yaml')
+
+        print(f"  Opening {targetPath}")
+        with open(targetPath, 'r', encoding='utf-8') as yamlstream:
             planets = load(yamlstream, Loader=SafeLoader)
-            print(f"Processing {len(planets)} planets")
+            print(f"  Processing {len(planets)} planets")
 
             for planetID, planet in planets.items():
                 position = planet.get('position', {})
@@ -277,16 +304,22 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 ))
 
         connection.commit()
-        print(f"Imported {len(planets)} planets")
+        print("  Done")
     except FileNotFoundError:
-        print("Warning: mapPlanets.yaml not found, skipping planet import")
+        print("  Warning: mapPlanets.yaml not found, skipping")
 
-    # Import moons
-    print("Importing moons from mapMoons.yaml")
+    print("Importing Moons")
     try:
-        with open(os.path.join(sourcePath, 'mapMoons.yaml'), 'r', encoding='utf-8') as yamlstream:
+        targetPath = os.path.join(sourcePath, 'mapMoons.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'fsd', 'mapMoons.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapMoons.yaml')
+
+        print(f"  Opening {targetPath}")
+        with open(targetPath, 'r', encoding='utf-8') as yamlstream:
             moons = load(yamlstream, Loader=SafeLoader)
-            print(f"Processing {len(moons)} moons")
+            print(f"  Processing {len(moons)} moons")
 
             for moonID, moon in moons.items():
                 position = moon.get('position', {})
@@ -309,16 +342,22 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 ))
 
         connection.commit()
-        print(f"Imported {len(moons)} moons")
+        print("  Done")
     except FileNotFoundError:
-        print("Warning: mapMoons.yaml not found, skipping moon import")
+        print("  Warning: mapMoons.yaml not found, skipping")
 
-    # Import asteroid belts
-    print("Importing asteroid belts from mapAsteroidBelts.yaml")
+    print("Importing Asteroid Belts")
     try:
-        with open(os.path.join(sourcePath, 'mapAsteroidBelts.yaml'), 'r', encoding='utf-8') as yamlstream:
+        targetPath = os.path.join(sourcePath, 'mapAsteroidBelts.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'fsd', 'mapAsteroidBelts.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapAsteroidBelts.yaml')
+
+        print(f"  Opening {targetPath}")
+        with open(targetPath, 'r', encoding='utf-8') as yamlstream:
             belts = load(yamlstream, Loader=SafeLoader)
-            print(f"Processing {len(belts)} asteroid belts")
+            print(f"  Processing {len(belts)} asteroid belts")
 
             for beltID, belt in belts.items():
                 position = belt.get('position', {})
@@ -341,16 +380,22 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 ))
 
         connection.commit()
-        print(f"Imported {len(belts)} asteroid belts")
+        print("  Done")
     except FileNotFoundError:
-        print("Warning: mapAsteroidBelts.yaml not found, skipping asteroid belt import")
+        print("  Warning: mapAsteroidBelts.yaml not found, skipping")
 
-    # Import stars
-    print("Importing stars from mapStars.yaml")
+    print("Importing Stars")
     try:
-        with open(os.path.join(sourcePath, 'mapStars.yaml'), 'r', encoding='utf-8') as yamlstream:
+        targetPath = os.path.join(sourcePath, 'mapStars.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'fsd', 'mapStars.yaml')
+        if not os.path.exists(targetPath):
+            targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'mapStars.yaml')
+
+        print(f"  Opening {targetPath}")
+        with open(targetPath, 'r', encoding='utf-8') as yamlstream:
             stars = load(yamlstream, Loader=SafeLoader)
-            print(f"Processing {len(stars)} stars")
+            print(f"  Processing {len(stars)} stars")
 
             for starID, star in stars.items():
                 position = star.get('position', {})
@@ -373,11 +418,9 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                 ))
 
         connection.commit()
-        print(f"Imported {len(stars)} stars")
+        print("  Done")
     except FileNotFoundError:
-        print("Warning: mapStars.yaml not found, skipping star import")
-
-    print("Universe data import complete")
+        print("  Warning: mapStars.yaml not found, skipping")
 
 
 def buildJumps(connection,connectiontype):

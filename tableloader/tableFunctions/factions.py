@@ -1,29 +1,31 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
 from yaml import load
 try:
     from yaml import CSafeLoader as SafeLoader
-    print("Using CSafeLoader")
 except ImportError:
     from yaml import SafeLoader
-    print("Using Python SafeLoader")
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing character factions")
+    print("Importing Factions")
     chrFactions = Table('chrFactions',metadata)
     chrRaces = Table('chrRaces',metadata)
-    
-    print("opening Yaml")
+
+    targetPath = os.path.join(sourcePath, 'factions.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'factions.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'factions.yaml')
+
+    print(f"  Opening {targetPath}")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'factions.yaml'),'r', encoding='utf-8') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         characterfactions=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(characterfactions)} factions")
         for factionid in characterfactions:
             connection.execute(chrFactions.insert().values(
                             factionID=factionid,
@@ -37,19 +39,28 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                             militiaCorporationID=characterfactions[factionid].get('militiaCorporationID'),
                       ))
     trans.commit()
+    print("  Done")
+
+    print("Importing Races")
+    targetPath = os.path.join(sourcePath, 'races.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'races.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'races.yaml')
+
+    print(f"  Opening {targetPath}")
 
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'races.yaml'),'r', encoding='utf-8') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         characterRaces=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(characterRaces)} races")
         for raceID in characterRaces:
             connection.execute(chrRaces.insert().values(
                             raceID=raceID,
                             raceName=characterRaces[raceID].get('name',{}).get(language,''),
                             description=characterRaces[raceID].get('description',{}).get(language,''),
                             iconID=characterRaces[raceID].get('iconID'),
-                            # Duplicate description for backwards compatability.
                             shortDescription=characterRaces[raceID].get('description',{}).get(language,''),
                       ))
     trans.commit()
+    print("  Done")

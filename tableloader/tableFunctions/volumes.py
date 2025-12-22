@@ -7,6 +7,7 @@ import csv
 
 def importVolumes(connection,metadata,sourcePath):
 
+    print("Importing Volumes")
     invVolumes = Table('invVolumes',metadata)
     invTypes = Table('invTypes',metadata)
     trans = connection.begin()
@@ -23,3 +24,4 @@ def importVolumes(connection,metadata,sourcePath):
         for group in volumereader:
             connection.execute(invVolumes.insert().values(typeID=int(group[1]),volume=int(group[0])))
     trans.commit()
+    print("Imported Volumes")

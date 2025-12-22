@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
-from yaml import load, dump
+from yaml import load
 try:
     from yaml import CSafeLoader as SafeLoader
-    print("Using CSafeLoader")
 except ImportError:
     from yaml import SafeLoader
-    print("Using Python SafeLoader")
 
 
 def int_to_roman(num):
@@ -37,18 +34,24 @@ def int_to_roman(num):
 
 
 def importyaml(connection, metadata, sourcePath, language='en'):
-    print("Importing station data")
+    print("Importing Stations")
 
     staStations = Table('staStations', metadata)
     staOperations = Table('staOperations', metadata)
     staServices = Table('staServices', metadata)
     staOperationServices = Table('staOperationServices', metadata)
 
-    # Import Station Operations
-    print("Importing station operations from stationOperations.yaml")
-    with open(os.path.join(sourcePath, 'stationOperations.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing Station Operations")
+    targetPath = os.path.join(sourcePath, 'stationOperations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'stationOperations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'stationOperations.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         operations = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(operations)} operations")
+        print(f"  Processing {len(operations)} station operations")
 
         for operationID, operation in operations.items():
             # Extract operation name based on language
@@ -89,13 +92,19 @@ def importyaml(connection, metadata, sourcePath, language='en'):
                 ))
 
     connection.commit()
-    print(f"Imported {len(operations)} station operations")
+    print("  Done")
 
-    # Import NPC Stations
-    print("Importing NPC stations from npcStations.yaml")
-    with open(os.path.join(sourcePath, 'npcStations.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing NPC Stations")
+    targetPath = os.path.join(sourcePath, 'npcStations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'npcStations.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'npcStations.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         stations = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(stations)} stations")
+        print(f"  Processing {len(stations)} NPC stations")
 
         for stationID, station in stations.items():
             position = station.get('position', {})
@@ -216,13 +225,19 @@ def importyaml(connection, metadata, sourcePath, language='en'):
             ))
 
     connection.commit()
-    print(f"Imported {len(stations)} NPC stations")
+    print("  Done")
 
-    # Import Station Services
-    print("Importing station services from stationServices.yaml")
-    with open(os.path.join(sourcePath, 'stationServices.yaml'), 'r', encoding='utf-8') as yamlstream:
+    print("Importing Station Services")
+    targetPath = os.path.join(sourcePath, 'stationServices.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'stationServices.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'stationServices.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         services = load(yamlstream, Loader=SafeLoader)
-        print(f"Processing {len(services)} services")
+        print(f"  Processing {len(services)} station services")
 
         for serviceID, service in services.items():
             # Extract service name based on language
@@ -240,6 +255,4 @@ def importyaml(connection, metadata, sourcePath, language='en'):
             ))
 
     connection.commit()
-    print(f"Imported {len(services)} station services")
-
-    print("Station data import complete")
+    print("  Done")

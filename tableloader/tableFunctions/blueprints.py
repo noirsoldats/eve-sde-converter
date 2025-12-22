@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 import os
 from sqlalchemy import Table
@@ -24,12 +22,19 @@ def importyaml(connection,metadata,sourcePath):
     
     
 
-    print("importing Blueprints")
-    print("opening Yaml")
+    print("Importing Blueprints")
+
+    targetPath = os.path.join(sourcePath, 'blueprints.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'blueprints.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'blueprints.yaml')
+
+    print(f"  Opening {targetPath}")
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'blueprints.yaml'),'r', encoding='utf-8') as yamlstream:
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         blueprints=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(blueprints)} blueprints")
         for blueprint in blueprints:
             connection.execute(industryBlueprints.insert().values(typeID=blueprint,maxProductionLimit=blueprints[blueprint]["maxProductionLimit"]))
             for activity in blueprints[blueprint]['activities']:
@@ -66,5 +71,6 @@ def importyaml(connection,metadata,sourcePath):
                                                 skillID=skill['typeID'],
                                                 level=skill['level']))
                 except:
-                    print('{} has a bad skill'.format(blueprint))
+                    print(f"  Warning: Blueprint {blueprint} has invalid skill data")
     trans.commit()
+    print("  Done")

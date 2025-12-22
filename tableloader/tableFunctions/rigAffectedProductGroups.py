@@ -260,6 +260,7 @@ def filters_for_rig_activity(mod_rows: Iterable[Tuple[int, str, str, int, Option
     return out
 
 def importRigMappings(connection,metadata):
+    print("Importing Rig Mappings")
     show_debug = True
     cache_dir = Path('.cache_hoboleaks')
     mods_path = cache_dir / "industrymodifiersources.json"
@@ -404,4 +405,4 @@ def importRigMappings(connection,metadata):
         print(f"rigAffectedProductGroups rows: {c2} (attempted inserts pre-dedupe: {total_insert})")
 
     if not show_debug:
-        print("Done.")
+        print("Imported Rig Mappings.")

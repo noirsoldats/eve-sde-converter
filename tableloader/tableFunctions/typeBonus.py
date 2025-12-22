@@ -13,16 +13,20 @@ except ImportError:
 
 
 def importyaml(connection, metadata, sourcePath, language='en'):
-    print("Importing type bonuses (traits)")
+    print("Importing Type Bonuses (Traits)")
     invTraits = Table('invTraits', metadata)
 
-    print("opening Yaml")
+    targetPath = os.path.join(sourcePath, 'typeBonus.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'typeBonus.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'typeBonus.yaml')
 
-    trans = connection.begin()
-    with open(os.path.join(sourcePath, 'typeBonus.yaml'), 'r', encoding='utf-8') as yamlstream:
-        print("importing")
+    print(f"Opening {targetPath}")
+    with open(targetPath, 'r', encoding='utf-8') as yamlstream:
+        trans = connection.begin()
         typeBonuses = load(yamlstream, Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"Populating Type Bonuses Table with {len(typeBonuses)} entries")
 
         for typeID in typeBonuses:
             typeData = typeBonuses[typeID]

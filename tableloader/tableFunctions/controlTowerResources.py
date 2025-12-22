@@ -13,16 +13,21 @@ except ImportError:
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing controlTowerResources")
+    print("Importing Control Tower Resources")
     invControlTowerResources = Table('invControlTowerResources',metadata)
     
-    print("opening Yaml")
+    targetPath = os.path.join(sourcePath, 'controlTowerResources.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'controlTowerResources.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'controlTowerResources.yaml')
+
+    print(f"Opening {targetPath}")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'controlTowerResources.yaml'),'r', encoding='utf-8') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         controlTowerResources=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"Populating Control Tower Resources Table with {len(controlTowerResources)} entries")
         for controlTowerResourcesid in controlTowerResources:
             for purpose in controlTowerResources[controlTowerResourcesid]['resources']:
                 connection.execute(invControlTowerResources.insert().values(
