@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
 from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing character bloodlines")
+    print("Importing Bloodlines")
     chrBloodlines = Table('chrBloodlines',metadata)
     
-    print("opening Yaml")
-        
+    targetPath = os.path.join(sourcePath, 'bloodlines.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'bloodlines.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'bloodlines.yaml')
+
+    print(f"  Opening {targetPath}")
+
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'bloodlines.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         bloodlines=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(bloodlines)} bloodlines")
         for bloodlineid in bloodlines:
             connection.execute(chrBloodlines.insert().values(
                             bloodlineID=bloodlineid,
@@ -37,5 +39,6 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                             willpower=bloodlines[bloodlineid].get('willpower'),
                             raceID=bloodlines[bloodlineid].get('raceID'),
                             shipTypeID=bloodlines[bloodlineid].get('shipTypeID'),
-                              )) 
+                              ))
     trans.commit()
+    print("  Done")

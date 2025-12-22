@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
-from yaml import load,dump
+from yaml import load, dump
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 
 distribution={'twosome':1,'bubble':2}
@@ -17,16 +14,21 @@ effectcategory={}
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing dogma effects")
+    print("Importing Dogma Effects")
     dgmEffects = Table('dgmEffects',metadata)
     
-    print("opening Yaml")
-        
+    targetPath = os.path.join(sourcePath, 'dogmaEffects.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'dogmaEffects.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'dogmaEffects.yaml')
+
+    print(f"  Opening {targetPath}")
+
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'dogmaEffects.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaEffects=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(dogmaEffects)} effects")
         for dogmaEffectsid in dogmaEffects:
             effect=dogmaEffects[dogmaEffectsid]
             connection.execute(dgmEffects.insert().values(
@@ -59,3 +61,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
             ))
     trans.commit()
+    print("  Done")

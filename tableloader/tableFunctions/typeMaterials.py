@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
 from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
     print("Importing Type Materials")
     invTypeMaterials = Table('invTypeMaterials',metadata)
     
-    print("opening Yaml")
-        
+    targetPath = os.path.join(sourcePath, 'typeMaterials.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'typeMaterials.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'typeMaterials.yaml')
+
+    print(f"  Opening {targetPath}")
+
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'typeMaterials.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         materials=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(materials)} type materials")
         for typeid in materials:
             # Check if this type has materials defined
             if 'materials' in materials[typeid]:
@@ -33,3 +35,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                                 quantity=material['quantity']
                     ))
     trans.commit()
+    print("  Done")

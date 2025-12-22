@@ -1,33 +1,31 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
-from yaml import load,dump
+from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
-
-
-distribution={'twosome':1,'bubble':2}
-effectcategory={}
+    from yaml import SafeLoader
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing dogma effects")
+    print("Importing Dogma Types")
     dgmEffects = Table('dgmTypeEffects',metadata)
     dgmAttributes = Table('dgmTypeAttributes',metadata)
     
-    print("opening Yaml")
-        
+    targetPath = os.path.join(sourcePath, 'typeDogma.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'typeDogma.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'typeDogma.yaml')
+    
+    print(f"  Opening {targetPath}")
+
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'typeDogma.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaEffects=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(dogmaEffects)} type dogma entries")
         for typeid in dogmaEffects:
             # Check if this type has dogmaEffects defined
             if 'dogmaEffects' in dogmaEffects[typeid]:
@@ -46,3 +44,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                                     valueFloat=attribute.get('value')
                     ))
     trans.commit()
+    print("  Done")

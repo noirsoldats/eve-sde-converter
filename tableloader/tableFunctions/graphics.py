@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
-from yaml import load, dump
+from yaml import load
 try:
-	from yaml import CSafeLoader as SafeLoader
-	print("Using CSafeLoader")
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
-	from yaml import SafeLoader
-	print("Using Python SafeLoader")
+    from yaml import SafeLoader
 
 import os
-import sys
 from sqlalchemy import Table
 
 def importyaml(connection,metadata,sourcePath):
     eveGraphics = Table('eveGraphics',metadata)
     print("Importing Graphics")
-    print("opening Yaml")
-    with open(os.path.join(sourcePath,'graphics.yaml'),'r') as yamlstream:
-        print("importing")
+    
+    targetPath = os.path.join(sourcePath, 'graphics.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'graphics.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'graphics.yaml')
+
+    print(f"  Opening {targetPath}")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         graphics=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(graphics)} graphics")
         for graphic in graphics:
             connection.execute(eveGraphics.insert().values(
                             graphicID=graphic,
@@ -27,5 +30,6 @@ def importyaml(connection,metadata,sourcePath):
                             graphicFile=graphics[graphic].get('graphicFile',''),
                             sofHullName=graphics[graphic].get('sofHullName',''),
                             sofRaceName=graphics[graphic].get('sofRaceName',''),
-                            description=''))  # Field removed from SDE
+                            description=''))
     trans.commit()
+    print("  Done")

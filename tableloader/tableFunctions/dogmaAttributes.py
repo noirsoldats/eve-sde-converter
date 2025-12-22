@@ -1,29 +1,31 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 from sqlalchemy import Table
 
-from yaml import load,dump
+from yaml import load
 try:
     from yaml import CSafeLoader as SafeLoader
-    print("Using CSafeLoader")
 except ImportError:
     from yaml import SafeLoader
-    print("Using Python SafeLoader")
 
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing dogma attributes")
+    print("Importing Dogma Attributes")
     dgmAttributes = Table('dgmAttributeTypes',metadata)
     
-    print("opening Yaml")
-        
+    targetPath = os.path.join(sourcePath, 'dogmaAttributes.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'dogmaAttributes.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'dogmaAttributes.yaml')
+
+    print(f"  Opening {targetPath}")
+
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'dogmaAttributes.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaAttributes=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"  Processing {len(dogmaAttributes)} attributes")
         for dogmaAttributeID in dogmaAttributes:
             attribute = dogmaAttributes[dogmaAttributeID]
             connection.execute(dgmAttributes.insert().values(
@@ -40,3 +42,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                                displayName=attribute.get('displayName',{}).get(language, 'None'),
                 ))
     trans.commit()
+    print("  Done")

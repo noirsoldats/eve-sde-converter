@@ -13,17 +13,22 @@ except ImportError:
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing metaGroups")
+    print("Importing Meta Groups")
     invMetaGroups = Table('invMetaGroups',metadata)
     trnTranslations = Table('trnTranslations',metadata)
     
-    print("opening Yaml")
+    targetPath = os.path.join(sourcePath, 'metaGroups.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'metaGroups.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'metaGroups.yaml')
+
+    print(f"Opening {targetPath}")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'metaGroups.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         metagroups=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"Populating Meta Groups Table with {len(metagroups)} entries")
         for metagroupid in metagroups:
             connection.execute(invMetaGroups.insert().values(
                             metaGroupID=metagroupid,

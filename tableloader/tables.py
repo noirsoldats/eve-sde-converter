@@ -45,15 +45,6 @@ def metadataCreator(schema):
     )
 
 
-    certCerts =  Table('certCerts', metadata,
-            Column('certID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
-            Column('description',UnicodeText()),
-            Column('groupID', INTEGER()),
-            Column('name', VARCHAR(length=255)),
-            schema=schema
-    )
-
-
     certMasteries =  Table('certMasteries', metadata,
             Column('typeID', INTEGER()),
             Column('masteryLevel', INTEGER()),
@@ -1046,6 +1037,54 @@ def metadataCreator(schema):
             schema=schema
     )
 
+
+    crtCertificates = Table('crtCertificates', metadata,
+            Column('certificateID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('groupID', INTEGER()),
+            Column('classID', INTEGER()),
+            Column('grade', INTEGER()),
+            Column('name', VARCHAR(length=256)),
+            Column('description', VARCHAR(length=3000)),
+            schema=schema
+    )
+
+    crtClasses = Table('crtClasses', metadata,
+            Column('classID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('description', VARCHAR(length=3000)),
+            Column('className', VARCHAR(length=256)),
+            schema=schema
+    )
+
+    crtRecommendations = Table('crtRecommendations', metadata,
+            Column('recommendationID', INTEGER(), primary_key=True, autoincrement=True, nullable=False),
+            Column('shipTypeID', INTEGER()),
+            Column('certificateID', INTEGER()),
+            Column('recommendationLevel', INTEGER()),
+            schema=schema
+    )
+
+    crtRelationships = Table('crtRelationships', metadata,
+            Column('relationshipID', INTEGER(), primary_key=True, autoincrement=True, nullable=False),
+            Column('parentID', INTEGER()),
+            Column('parentTypeID', INTEGER()),
+            Column('parentLevel', INTEGER()),
+            Column('childID', INTEGER()),
+            Column('grade', INTEGER()),
+            schema=schema
+    )
+
+    dgmMasteries = Table('dgmMasteries', metadata,
+            Column('masteryID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('certificateID', INTEGER()),
+            Column('grade', INTEGER()),
+            schema=schema
+    )
+
+    dgmTypeMasteries = Table('dgmTypeMasteries', metadata,
+            Column('typeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            Column('masteryID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
+            schema=schema
+    )
 
     rigAffectedProductGroups = Table('rigAffectedProductGroups', metadata,
             Column('rigTypeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),

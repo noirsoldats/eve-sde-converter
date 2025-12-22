@@ -13,18 +13,23 @@ except ImportError:
 
 
 def importyaml(connection,metadata,sourcePath,language='en'):
-    print("Importing marketGroups")
+    print("Importing Planetary Schematics")
     planetSchematics = Table('planetSchematics',metadata)
     planetSchematicsPinMap = Table('planetSchematicsPinMap',metadata)
     planetSchematicsTypeMap = Table('planetSchematicsTypeMap',metadata)
     
-    print("opening Yaml")
+    targetPath = os.path.join(sourcePath, 'planetSchematics.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'fsd', 'planetSchematics.yaml')
+    if not os.path.exists(targetPath):
+        targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'planetSchematics.yaml')
+
+    print(f"Opening {targetPath}")
         
     trans = connection.begin()
-    with open(os.path.join(sourcePath,'planetSchematics.yaml'),'r') as yamlstream:
-        print("importing")
+    with open(targetPath,'r', encoding='utf-8') as yamlstream:
         schematics=load(yamlstream,Loader=SafeLoader)
-        print("Yaml Processed into memory")
+        print(f"Populating Planetary Schematics Tables with {len(schematics)} entries")
         for schematicid in schematics:
             connection.execute(planetSchematics.insert().values(
                             schematicID=schematicid,
