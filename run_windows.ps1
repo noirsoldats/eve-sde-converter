@@ -3,6 +3,10 @@
     Windows automation script for eve-sde-converter
 #>
 
+param(
+    [string]$DbType = "sqlite"
+)
+
 $BASE_URL = "https://developers.eveonline.com/static-data/tranquility"
 $SDE_DIR = "sde"
 $JSONL_FILE = "$SDE_DIR\latest.jsonl"
@@ -105,20 +109,20 @@ Log-Message " Done." -ForegroundColor Green
 
 # 4. Run Conversion with Progress Bar
 if (-not (Test-Path $PYTHON_CMD)) {
-    $err = "Virtual environment python found at $PYTHON_CMD. Please create .venv first."
+    $err = "Virtual environment python NOT found at $PYTHON_CMD. Please create .venv first."
     Write-Error $err
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Add-Content -Path $LOGFILE -Value "[$timestamp] ERROR: $err"
     exit 1
 }
 
-Log-Message "[4/4] Converting Database..." 
+Log-Message "[4/4] Converting Database to $DbType..." 
 Log-Message "      (This may take a few minutes. See progress bar above.)" -ForegroundColor DarkGray
 
 # Setup process to capture output and show progress
 $p = New-Object System.Diagnostics.Process
 $p.StartInfo.FileName = (Resolve-Path $PYTHON_CMD).Path
-$p.StartInfo.Arguments = "-u Load.py sqlite" # -u unbuffered is key
+$p.StartInfo.Arguments = "-u Load.py $DbType" # Pass dynamic DbType
 $p.StartInfo.RedirectStandardOutput = $true
 $p.StartInfo.RedirectStandardError = $true
 $p.StartInfo.UseShellExecute = $false
@@ -128,18 +132,30 @@ $p.StartInfo.WorkingDirectory = (Get-Location).Path
 $p.Start() | Out-Null
 
 $steps = @(
-    "character factions", "character Ancestries", "character bloodlines", "NPC corporations", 
-    "character Attributes", "Agents", "AgentsInSpace", "research agents", "agent types", 
-    "Type Materials", "dogma effects", "dogma effects", "dogma attributes", "dogma attribute categories", 
-    "Blueprints", "marketGroups", "metaGroups", "controlTowerResources", "Categories", 
-    "Certificates", "Graphics", "Groups", "Icons", "Skins", "Types", "type bonuses (traits)", 
-    "marketGroups", "universe data", 
-    "regions from mapRegions.yaml", "constellations from mapConstellations.yaml", 
-    "solar systems from mapSolarSystems.yaml", "stargates from mapStargates.yaml", 
-    "planets from mapPlanets.yaml", "moons from mapMoons.yaml", 
-    "asteroid belts from mapAsteroidBelts.yaml", "stars from mapStars.yaml", 
-    "station data", "station operations from stationOperations.yaml", 
-    "NPC stations from npcStations.yaml", "station services from stationServices.yaml"
+    # Character data
+    "Factions", "Ancestries", "Bloodlines", "NPC Corporations", "NPC Divisions", "Character Attributes",
+    # Agents
+    "Agents", "AgentsInSpace", "Research Agents", "Agent Types",
+    # Type/Dogma data
+    "Type Materials", "Dogma Types", "Dogma Effects", "Dogma Attributes", "Dogma Attribute Categories",
+    # Industry & Market
+    "Blueprints", "Market Groups", "Meta Groups", "Control Tower Resources",
+    # Categories, Groups, Types
+    "Categories", "Graphics", "Groups", "Certificates", "Icons", "Skins", "Types", "Type Bonuses",
+    # Masteries & Units
+    "Masteries", "Units",
+    # Planetary
+    "Planetary",
+    # Volumes
+    "Volumes",
+    # Universe data
+    "Universe", "Regions", "Constellations", "Solar Systems", "Stargates", "Planets", "Moons", "Asteroid Belts", "Stars",
+    # Stations
+    "Stations", "Station Operations", "NPC Stations", "Station Services",
+    # Inventory
+    "Inventory Names", "Inventory Items",
+    # Rig mappings
+    "Rig Mappings"
 )
 $totalSteps = $steps.Count
 $currentStepIdx = 0
@@ -163,52 +179,59 @@ while (-not $p.HasExited) {
             $currentStepIdx++
             $percent = [math]::Min(100, [int](($currentStepIdx / $totalSteps) * 100))
             
-            Write-Progress -Activity "Converting EVE SDE to SQLite" -Status "Processing: $item" -PercentComplete $percent
+            Write-Progress -Activity "Converting EVE SDE to $DbType" -Status "Processing: $item" -PercentComplete $percent
         }
     }
 }
 $p.WaitForExit()
 
 # Clean up progress bar
-Write-Progress -Activity "Converting EVE SDE to SQLite" -Completed
+Write-Progress -Activity "Converting EVE SDE to $DbType" -Completed
 
 # Check Exit Code
 if ($p.ExitCode -eq 0) {
     Log-Message "[4/4] Conversion Done." -ForegroundColor Green
     
-    if (Test-Path "eve.db") {
-        Log-Message "      Moving eve.db to $SDE_DIR..." -ForegroundColor DarkGray
-        
-        # Retry loop for file move
-        $maxRetries = 5
-        $retryDelay = 2
-        for ($i = 0; $i -lt $maxRetries; $i++) {
-            try {
-                Move-Item -Path "eve.db" -Destination "$SDE_DIR\eve.db" -Force -ErrorAction Stop
-                Log-Message "      Move successful." -ForegroundColor Green
-                break
-            } catch {
-                if ($i -eq $maxRetries - 1) {
-                    $err = "Failed to move eve.db after $maxRetries attempts: $_"
-                    Write-Error $err
-                    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                    Add-Content -Path $LOGFILE -Value "[$timestamp] ERROR: $err"
-                } else {
-                    Log-Message "      File locked, retrying in $retryDelay seconds..." -ForegroundColor Yellow
-                    Start-Sleep -Seconds $retryDelay
-                    # Force Garbage Collection just in case
-                    [System.GC]::Collect()
-                    [System.GC]::WaitForPendingFinalizers()
+    # Only move 'eve.db' if we are in sqlite mode
+    if ($DbType -eq "sqlite") {
+        if (Test-Path "eve.db") {
+            Log-Message "      Moving eve.db to $SDE_DIR..." -ForegroundColor DarkGray
+            
+            # Retry loop for file move
+            $maxRetries = 5
+            $retryDelay = 2
+            for ($i = 0; $i -lt $maxRetries; $i++) {
+                try {
+                    Move-Item -Path "eve.db" -Destination "$SDE_DIR\eve.db" -Force -ErrorAction Stop
+                    Log-Message "      Move successful." -ForegroundColor Green
+                    break
+                } catch {
+                    if ($i -eq $maxRetries - 1) {
+                        $err = "Failed to move eve.db after $maxRetries attempts: $_"
+                        Write-Error $err
+                        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                        Add-Content -Path $LOGFILE -Value "[$timestamp] ERROR: $err"
+                    } else {
+                        Log-Message "      File locked, retrying in $retryDelay seconds..." -ForegroundColor Yellow
+                        Start-Sleep -Seconds $retryDelay
+                        # Force Garbage Collection just in case
+                        [System.GC]::Collect()
+                        [System.GC]::WaitForPendingFinalizers()
+                    }
                 }
             }
         }
+    } else {
+        Log-Message "      Data inserted into $DbType server." -ForegroundColor Green
     }
+
 } else {
     Log-Message "[4/4] Conversion Failed." -ForegroundColor Red
     # Dump stderr if failed
     $err = $p.StandardError.ReadToEnd()
     Write-Host $err -ForegroundColor Red
-    Add-Content -Path $LOGFILE -Value "STDERR OUTPUT:"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $LOGFILE -Value "[$timestamp] STDERR OUTPUT:"
     Add-Content -Path $LOGFILE -Value $err
 }
 
