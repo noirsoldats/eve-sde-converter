@@ -17,7 +17,7 @@ A modern, cross-platform tool to convert the EVE Online Static Data Export (SDE)
 
 ## Requirements
 
-*   **Python 3.10+**
+*   **Python 3.12+**
 *   `libyaml` (optional but recommended - enables CSafeLoader for ~5x faster YAML parsing)
 
 ## Quick Start (Windows)
@@ -52,6 +52,8 @@ We provide a fully automated script that does all the work for you.
     *   **Logs** all activity to `sde_conversion_log_<TIMESTAMP>.log`.
 
 ## Manual Installation (macOS / Linux / Custom)
+
+> In the future this will be updated to have a run script like the windows PowerShell script above. Currently runconversion.sh is untested and likely non-functional.
 
 If you prefer to run things manually or are on a non-Windows platform:
 
