@@ -1,27 +1,44 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-import yaml
-from sqlalchemy import Table,literal_column,select,literal
-import csv
+import requests
+from sqlalchemy import Table
 
 def importVolumes(connection,metadata,sourcePath):
 
-    print("Importing Volumes")
+    print("Importing Volumes from hoboleaks.space")
     invVolumes = Table('invVolumes',metadata)
-    invTypes = Table('invTypes',metadata)
     trans = connection.begin()
-    # These files are part of the repo, located in the root directory.
-    # We open them directly rather than looking in the SDE source path.
-    with open('invVolumes1.csv', 'r', encoding='utf-8') as groupVolumes:
-        volumereader=csv.reader(groupVolumes, delimiter=',')
-        for group in volumereader:
-            # SQLAlchemy 2.0: select() no longer takes a list, pass columns as separate arguments
-            connection.execute(invVolumes.insert().from_select(['typeID','volume'],select(invTypes.c.typeID,literal(int(group[0]))).where(invTypes.c.groupID == int(group[1]))))
-    
-    with open('invVolumes2.csv', 'r', encoding='utf-8') as groupVolumes:
-        volumereader=csv.reader(groupVolumes, delimiter=',')
-        for group in volumereader:
-            connection.execute(invVolumes.insert().values(typeID=int(group[1]),volume=int(group[0])))
-    trans.commit()
-    print("Imported Volumes")
+
+    try:
+        # Fetch packaged volume data from hoboleaks.space
+        url = 'https://sde.hoboleaks.space/tq/repackagedvolumes.json'
+        print(f"  Fetching data from {url}...")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        volume_data = response.json()
+
+        print(f"  Processing {len(volume_data)} volume entries...")
+
+        # Insert typeID-volume pairs
+        # JSON keys are strings, values can be int or float
+        for type_id_str, volume in volume_data.items():
+            type_id = int(type_id_str)
+            volume_int = int(volume)
+            connection.execute(
+                invVolumes.insert().values(typeID=type_id, volume=volume_int)
+            )
+
+        trans.commit()
+        print(f"  Imported {len(volume_data)} volume entries")
+        print("  Done")
+
+    except requests.RequestException as e:
+        trans.rollback()
+        print(f"Error fetching volume data from hoboleaks.space: {e}")
+        print("Volume import failed - please check your internet connection")
+        raise
+    except Exception as e:
+        trans.rollback()
+        print(f"Error importing volumes: {e}")
+        raise

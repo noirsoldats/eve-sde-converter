@@ -202,11 +202,6 @@ jobs:
           echo "Extracting SDE..."
           unzip -q sde.zip -d sde
 
-          # Copy invVolumes CSV files to SDE directory
-          echo "Copying invVolumes CSV files..."
-          cp invVolumes1.csv sde/
-          cp invVolumes2.csv sde/
-
           echo "SDE ready at: sde/"
           ls -la sde/
 

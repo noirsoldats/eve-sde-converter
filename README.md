@@ -48,44 +48,82 @@ We provide a fully automated script that does all the work for you.
     *   **Downloads** the correct SDE zip file automatically.
     *   **Extracts** and organizes the files into the `sde` folder (cleaning up nested directories).
     *   **Runs** the conversion process with a visual progress bar.
-    *   **Generates** a ready-to-use `eve.db` (SQLite) in the `sde` folder.
+    *   **Generates** a ready-to-use `eve.db` (SQLite) in the project root.
     *   **Logs** all activity to `sde_conversion_log_<TIMESTAMP>.log`.
 
-## Manual Installation (macOS / Linux / Custom)
+## Quick Start (macOS / Linux)
 
-> In the future this will be updated to have a run script like the windows PowerShell script above. Currently runconversion.sh is untested and likely non-functional.
+Follow these steps to set up and run the SDE converter on macOS or Linux:
 
-If you prefer to run things manually or are on a non-Windows platform:
-
-1.  **Install Dependencies**:
+1.  **Clone the repository**:
     ```bash
+    git clone https://github.com/noirsoldats/eve-sde-converter.git
+    cd eve-sde-converter
+    ```
+
+2.  **Install libyaml** (optional but recommended for 5x faster YAML parsing):
+
+    **macOS (Homebrew)**:
+    ```bash
+    brew install libyaml
+    ```
+
+    **macOS (MacPorts)**:
+    ```bash
+    sudo port install libyaml
+    export C_INCLUDE_PATH=/opt/local/include
+    ```
+
+    **Ubuntu/Debian**:
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y libyaml-dev
+    ```
+
+    **Fedora/RHEL**:
+    ```bash
+    sudo dnf install -y libyaml-devel
+    ```
+
+3.  **Setup Python Environment**:
+    Create a virtual environment and install dependencies:
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
     pip install -r requirements.txt
     ```
 
-2.  **Download SDE**:
-    Download the latest SDE YAML zip from [CCP's Static Data page](https://developers.eveonline.com/static-data) and extract it into a folder named `sde` in the project root.
-
-3.  **Copy Volume Data**:
-    Copy the included volume CSV files to the `sde` folder:
+4.  **Run the Conversion**:
     ```bash
-    cp invVolumes1.csv invVolumes2.csv sde/
+    chmod +x runconversion.sh
+    ./runconversion.sh
     ```
 
-4.  **Run Loader**:
+    This will create `eve.db` in the project root. The process takes 5-15 minutes depending on your system.
+    **What this script does:**
+    *   Checks the latest SDE version from CCP.
+    *   **Downloads** the correct SDE zip file automatically.
+    *   **Extracts** and organizes the files into the `sde` folder (cleaning up nested directories).
+    *   **Runs** the conversion process with a visual progress bar.
+    *   **Generates** a ready-to-use `eve.db` (SQLite) in the project root.
+    *   **Logs** all activity to `sde_conversion_log_<TIMESTAMP>.log`.
+
+5.  **Verify the Database**:
     ```bash
-    python Load.py sqlite
+    ls -lh eve.db
+    sqlite3 eve.db "SELECT COUNT(*) FROM invTypes;"
     ```
 
 ## Database Configuration
 
 The converter supports multiple database backends. Edit `sdeloader.cfg` to configure connection strings:
 
-| Target | Command | Notes |
-|--------|---------|-------|
-| SQLite | `python Load.py sqlite` | Default. Creates `eve.db` in the project root. |
-| MySQL | `python Load.py mysql` | Requires `pymysql`. Configure connection in `sdeloader.cfg`. |
-| PostgreSQL | `python Load.py postgres` | Requires `psycopg2`. Configure connection in `sdeloader.cfg`. |
-| MS SQL Server | `python Load.py mssql` | Requires `pymssql`. Configure connection in `sdeloader.cfg`. |
+| Target        | Command                   | Notes                                                         |
+|---------------|---------------------------|---------------------------------------------------------------|
+| SQLite        | `python Load.py sqlite`   | Default. Creates `eve.db` in the project root.                |
+| MySQL         | `python Load.py mysql`    | Requires `pymysql`. Configure connection in `sdeloader.cfg`.  |
+| PostgreSQL    | `python Load.py postgres` | Requires `psycopg2`. Configure connection in `sdeloader.cfg`. |
+| MS SQL Server | `python Load.py mssql`    | Requires `pymssql`. Configure connection in `sdeloader.cfg`.  |
 
 ## Automatic Builds
 
@@ -98,9 +136,9 @@ The converter imports the following data from the SDE:
 - **Character Data**: Factions, races, bloodlines, ancestries, attributes
 - **Corporations**: NPC corporations, divisions
 - **Agents**: Agent locations, types, research agents
-- **Items**: Types, groups, categories, market groups, meta groups
+- **Items**: Types, groups, categories, market groups, meta groups, packaged volumes
 - **Dogma**: Attributes, effects, type attributes/effects
-- **Industry**: Blueprints, materials, activities
+- **Industry**: Blueprints, materials, activities, Station Rig Effect Mappings
 - **Certificates & Masteries**: Certificate definitions and ship mastery requirements
 - **Universe**: Regions, constellations, solar systems, stargates, planets, moons, asteroid belts, stars
 - **Stations**: NPC stations, operations, services

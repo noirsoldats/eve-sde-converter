@@ -101,11 +101,8 @@ if (-not (Test-Path "$SDE_DIR\typeBonus.yaml")) {
     Log-Message "[2/4] SDE data already extracted." -ForegroundColor Green
 }
 
-# 3. Copy Assets
-Log-Message "[3/4] preparing Assets..." -NoNewline
-Copy-Item "invVolumes1.csv" -Destination $SDE_DIR -Force
-Copy-Item "invVolumes2.csv" -Destination $SDE_DIR -Force
-Log-Message " Done." -ForegroundColor Green
+# 3. Skip - No assets needed (volumes fetched from hoboleaks.space)
+Log-Message "[3/4] Skipping asset preparation (volumes fetched automatically)..." -ForegroundColor Green
 
 # 4. Run Conversion with Progress Bar
 if (-not (Test-Path $PYTHON_CMD)) {
