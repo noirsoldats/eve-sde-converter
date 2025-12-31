@@ -26,27 +26,53 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         marketgroups=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(marketgroups)} market groups")
+
+        # Build bulk insert lists
+        group_rows = []
+        translation_rows = []
+
         for marketgroupid in marketgroups:
-            connection.execute(invMarketGroups.insert().values(
-                            marketGroupID=marketgroupid,
-                            parentGroupID=marketgroups[marketgroupid].get('parentGroupID',None),
-                            marketGroupName=marketgroups[marketgroupid].get('name',{}).get(language,''),
-                            description=marketgroups[marketgroupid].get('description',{}).get(language,''),
-                            iconID=marketgroups[marketgroupid].get('iconID'),
-                            hasTypes=marketgroups[marketgroupid].get('hasTypes',False)
-            ))
+            group_rows.append({
+                'marketGroupID': marketgroupid,
+                'parentGroupID': marketgroups[marketgroupid].get('parentGroupID',None),
+                'marketGroupName': marketgroups[marketgroupid].get('name',{}).get(language,''),
+                'description': marketgroups[marketgroupid].get('description',{}).get(language,''),
+                'iconID': marketgroups[marketgroupid].get('iconID'),
+                'hasTypes': marketgroups[marketgroupid].get('hasTypes',False)
+            })
 
             if ('name' in marketgroups[marketgroupid]):
                 for lang in marketgroups[marketgroupid]['name']:
                     try:
-                        connection.execute(trnTranslations.insert().values(tcID=36,keyID=marketgroupid,languageID=lang,text=marketgroups[marketgroupid]['name'][lang]));
+                        translation_rows.append({
+                            'tcID': 36,
+                            'keyID': marketgroupid,
+                            'languageID': lang,
+                            'text': marketgroups[marketgroupid]['name'][lang]
+                        })
                     except:
                         print(f"  Warning: Market group {marketgroupid} ({lang}) has translation issue")
+
             if ('description' in marketgroups[marketgroupid]):
                 for lang in marketgroups[marketgroupid]['description']:
                     try:
-                        connection.execute(trnTranslations.insert().values(tcID=37,keyID=marketgroupid,languageID=lang,text=marketgroups[marketgroupid]['description'][lang]));
+                        translation_rows.append({
+                            'tcID': 37,
+                            'keyID': marketgroupid,
+                            'languageID': lang,
+                            'text': marketgroups[marketgroupid]['description'][lang]
+                        })
                     except:
                         print(f"  Warning: Market group {marketgroupid} ({lang}) has description issue")
+
+        # BULK INSERTS
+        if group_rows:
+            connection.execute(invMarketGroups.insert(), group_rows)
+            print(f"  Inserted {len(group_rows)} market groups")
+
+        if translation_rows:
+            connection.execute(trnTranslations.insert(), translation_rows)
+            print(f"  Inserted {len(translation_rows)} market group translations")
+
     trans.commit()
     print("  Done")

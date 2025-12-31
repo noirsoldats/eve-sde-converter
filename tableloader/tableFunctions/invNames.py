@@ -27,9 +27,17 @@ def importyaml(connection, metadata, sourcePath, language='en'):
     connection.execute(text("INSERT INTO invNames (itemID, itemName) SELECT stationID, stationName FROM staStations"))
 
     print("  Inserting from mapDenormalize (celestials)")
-    connection.execute(text("""
+    # Use database-agnostic string concatenation
+    # MySQL uses CONCAT(), SQLite/PostgreSQL use ||
+    dialect_name = connection.engine.dialect.name
+    if dialect_name == 'mysql':
+        concat_sql = "CONCAT(t.typeName, ' ', CAST(d.itemID AS CHAR))"
+    else:
+        concat_sql = "t.typeName || ' ' || d.itemID"
+
+    connection.execute(text(f"""
         INSERT INTO invNames (itemID, itemName)
-        SELECT d.itemID, t.typeName || ' ' || d.itemID
+        SELECT d.itemID, {concat_sql}
         FROM mapDenormalize d
         JOIN invTypes t ON d.typeID = t.typeID
         LEFT JOIN invNames n ON d.itemID = n.itemID

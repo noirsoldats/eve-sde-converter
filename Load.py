@@ -48,12 +48,24 @@ if database=="postgresschema":
 
 metadata=metadataCreator(schema)
 
-print("Creating Tables")
+print("Creating Tables (indexes will be created after data load)")
 
 metadata.drop_all(engine,checkfirst=True)
-metadata.create_all(engine,checkfirst=True)
 
-print("created")
+# Store all indexes for later creation
+saved_indexes = {}
+for table in metadata.sorted_tables:
+    if table.indexes:
+        # Save the indexes
+        saved_indexes[table.name] = list(table.indexes)
+        # Temporarily remove indexes from table
+        table.indexes.clear()
+
+# Now create tables WITHOUT indexes for faster data loading
+# This is especially important for MySQL where indexes slow down inserts dramatically
+metadata.create_all(engine, checkfirst=True)
+
+print("Tables created (without indexes)")
 
 
 factions.importyaml(connection,metadata,sourcePath,language)
@@ -90,12 +102,45 @@ planetary.importyaml(connection,metadata,sourcePath,language)
 # bsdTables.importyaml(connection,metadata,sourcePath)
 volumes.importVolumes(connection,metadata,sourcePath)
 universe.importyaml(connection,metadata,sourcePath,language)
-universe.buildJumps(connection,database)
+universe.buildJumps(connection,metadata)
 stations.importyaml(connection,metadata,sourcePath,language)
 universe.fixStationNames(connection,metadata)
 invNames.importyaml(connection,metadata,sourcePath,language)
 invItems.importyaml(connection,metadata,sourcePath,language)
 rigAffectedProductGroups.importRigMappings(connection,metadata)
+
+# Create indexes AFTER all data is loaded for significantly better performance
+print("\n" + "="*60)
+print("Creating Indexes (this may take several minutes)...")
+print("="*60)
+
+import time
+start_time = time.time()
+index_count = 0
+error_count = 0
+
+# Create indexes from the saved index definitions
+for table_name, indexes in saved_indexes.items():
+    if indexes:
+        print(f"\nIndexing table: {table_name}")
+        for index in indexes:
+            try:
+                index.create(engine)
+                index_count += 1
+                print(f"  ✓ Created index: {index.name}")
+            except Exception as e:
+                error_count += 1
+                # Some indexes might fail for valid reasons
+                print(f"  ⚠ Warning: Could not create index {index.name}: {e}")
+
+elapsed_time = time.time() - start_time
+print("\n" + "="*60)
+print(f"Index creation complete!")
+print(f"  Indexes created: {index_count}")
+if error_count > 0:
+    print(f"  Warnings: {error_count}")
+print(f"  Time taken: {elapsed_time:.2f} seconds")
+print("="*60 + "\n")
 
 # Close connections before file operations
 connection.close()

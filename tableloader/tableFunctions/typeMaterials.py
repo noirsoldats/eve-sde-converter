@@ -25,14 +25,24 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         materials=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(materials)} type materials")
+
+        # Build bulk insert list
+        material_rows = []
+
         for typeid in materials:
             # Check if this type has materials defined
             if 'materials' in materials[typeid]:
                 for material in materials[typeid]['materials']:
-                    connection.execute(invTypeMaterials.insert().values(
-                                typeID=typeid,
-                                materialTypeID=material['materialTypeID'],
-                                quantity=material['quantity']
-                    ))
+                    material_rows.append({
+                        'typeID': typeid,
+                        'materialTypeID': material['materialTypeID'],
+                        'quantity': material['quantity']
+                    })
+
+        # BULK INSERT
+        if material_rows:
+            connection.execute(invTypeMaterials.insert(), material_rows)
+            print(f"  Inserted {len(material_rows)} type materials")
+
     trans.commit()
     print("  Done")

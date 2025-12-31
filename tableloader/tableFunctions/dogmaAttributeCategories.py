@@ -23,12 +23,12 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     if not os.path.exists(targetPath):
         targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'dogmaAttributeCategories.yaml')
 
-    print(f"Opening {targetPath}")
+    print(f"  Opening {targetPath}")
         
     trans = connection.begin()
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaAttributeCategories=load(yamlstream,Loader=SafeLoader)
-        print(f"Populating Dogma Attribute Categories Table with {len(dogmaAttributeCategories)} entries")
+        print(f"  Populating Dogma Attribute Categories Table with {len(dogmaAttributeCategories)} entries")
         for dogmaAttributeCategoryID in dogmaAttributeCategories:
           attribute = dogmaAttributeCategories[dogmaAttributeCategoryID]
           connection.execute(dgmAttributeCategories.insert().values(
@@ -37,3 +37,4 @@ def importyaml(connection,metadata,sourcePath,language='en'):
                              categoryDescription=attribute.get('description','')
                 ))
     trans.commit()
+    print("  Done")

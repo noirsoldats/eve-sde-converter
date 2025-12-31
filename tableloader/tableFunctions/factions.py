@@ -26,18 +26,28 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         characterfactions=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(characterfactions)} factions")
+
+        # Build bulk insert list
+        faction_rows = []
+
         for factionid in characterfactions:
-            connection.execute(chrFactions.insert().values(
-                            factionID=factionid,
-                            factionName=characterfactions[factionid].get('name',{}).get(language,''),
-                            description=characterfactions[factionid].get('description',{}).get(language,''),
-                            iconID=characterfactions[factionid].get('iconID'),
-                            raceIDs=characterfactions[factionid].get('memberRaces',[0])[0],
-                            solarSystemID=characterfactions[factionid].get('solarSystemID'),
-                            corporationID=characterfactions[factionid].get('corporationID'),
-                            sizeFactor=characterfactions[factionid].get('sizeFactor'),
-                            militiaCorporationID=characterfactions[factionid].get('militiaCorporationID'),
-                      ))
+            faction_rows.append({
+                'factionID': factionid,
+                'factionName': characterfactions[factionid].get('name',{}).get(language,''),
+                'description': characterfactions[factionid].get('description',{}).get(language,''),
+                'iconID': characterfactions[factionid].get('iconID'),
+                'raceIDs': characterfactions[factionid].get('memberRaces',[0])[0],
+                'solarSystemID': characterfactions[factionid].get('solarSystemID'),
+                'corporationID': characterfactions[factionid].get('corporationID'),
+                'sizeFactor': characterfactions[factionid].get('sizeFactor'),
+                'militiaCorporationID': characterfactions[factionid].get('militiaCorporationID')
+            })
+
+        # BULK INSERT
+        if faction_rows:
+            connection.execute(chrFactions.insert(), faction_rows)
+            print(f"  Inserted {len(faction_rows)} factions")
+
     trans.commit()
     print("  Done")
 
@@ -54,13 +64,23 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         characterRaces=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(characterRaces)} races")
+
+        # Build bulk insert list
+        race_rows = []
+
         for raceID in characterRaces:
-            connection.execute(chrRaces.insert().values(
-                            raceID=raceID,
-                            raceName=characterRaces[raceID].get('name',{}).get(language,''),
-                            description=characterRaces[raceID].get('description',{}).get(language,''),
-                            iconID=characterRaces[raceID].get('iconID'),
-                            shortDescription=characterRaces[raceID].get('description',{}).get(language,''),
-                      ))
+            race_rows.append({
+                'raceID': raceID,
+                'raceName': characterRaces[raceID].get('name',{}).get(language,''),
+                'description': characterRaces[raceID].get('description',{}).get(language,''),
+                'iconID': characterRaces[raceID].get('iconID'),
+                'shortDescription': characterRaces[raceID].get('description',{}).get(language,'')
+            })
+
+        # BULK INSERT
+        if race_rows:
+            connection.execute(chrRaces.insert(), race_rows)
+            print(f"  Inserted {len(race_rows)} races")
+
     trans.commit()
     print("  Done")

@@ -27,23 +27,31 @@ def importyaml(connection,metadata,sourcePath,language='en'):
         trans = connection.begin()
         typeids=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(typeids)} types")
+
+        # Build bulk insert lists
+        type_rows = []
+        translation_rows = []
+        meta_type_rows = []
+
         for typeid in typeids:
-            connection.execute(invTypes.insert().values(
-                            typeID=typeid,
-                            groupID=typeids[typeid].get('groupID',0),
-                            typeName=typeids[typeid].get('name',{}).get(language,''),
-                            description=typeids[typeid].get('description',{}).get(language,''),
-                            mass=typeids[typeid].get('mass',0),
-                            volume=typeids[typeid].get('volume',0),
-                            capacity=typeids[typeid].get('capacity',0),
-                            portionSize=typeids[typeid].get('portionSize'),
-                            raceID=typeids[typeid].get('raceID'),
-                            basePrice=typeids[typeid].get('basePrice'),
-                            published=typeids[typeid].get('published',0),
-                            marketGroupID=typeids[typeid].get('marketGroupID'),
-                            graphicID=typeids[typeid].get('graphicID',0),
-                            iconID=typeids[typeid].get('iconID'),
-                            soundID=typeids[typeid].get('soundID')))
+            type_rows.append({
+                'typeID': typeid,
+                'groupID': typeids[typeid].get('groupID',0),
+                'typeName': typeids[typeid].get('name',{}).get(language,''),
+                'description': typeids[typeid].get('description',{}).get(language,''),
+                'mass': typeids[typeid].get('mass',0),
+                'volume': typeids[typeid].get('volume',0),
+                'capacity': typeids[typeid].get('capacity',0),
+                'portionSize': typeids[typeid].get('portionSize'),
+                'raceID': typeids[typeid].get('raceID'),
+                'basePrice': typeids[typeid].get('basePrice'),
+                'published': typeids[typeid].get('published',0),
+                'marketGroupID': typeids[typeid].get('marketGroupID'),
+                'graphicID': typeids[typeid].get('graphicID',0),
+                'iconID': typeids[typeid].get('iconID'),
+                'soundID': typeids[typeid].get('soundID')
+            })
+
             # @TODO: Fix 'masteries' fetch from certificates.yaml(?)
             # if  "masteries" in typeids[typeid]:
             #     for level in typeids[typeid]["masteries"]:
@@ -52,12 +60,25 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             #                                 typeID=typeid,
             #                                 masteryLevel=level,
             #                                 certID=cert))
+
             if ('name' in typeids[typeid]):
                 for lang in typeids[typeid]['name']:
-                    connection.execute(trnTranslations.insert().values(tcID=8,keyID=typeid,languageID=lang,text=typeids[typeid]['name'][lang]))
+                    translation_rows.append({
+                        'tcID': 8,
+                        'keyID': typeid,
+                        'languageID': lang,
+                        'text': typeids[typeid]['name'][lang]
+                    })
+
             if ('description' in typeids[typeid]):
                 for lang in typeids[typeid]['description']:
-                    connection.execute(trnTranslations.insert().values(tcID=33,keyID=typeid,languageID=lang,text=typeids[typeid]['description'][lang]))
+                    translation_rows.append({
+                        'tcID': 33,
+                        'keyID': typeid,
+                        'languageID': lang,
+                        'text': typeids[typeid]['description'][lang]
+                    })
+
             # @TODO: Fix 'traits' and figure out what they are and where they went..?
             # Traits moved to the TypeBonus.yaml file and are now handled in the typeBonus.py.
             # if ('traits' in typeids[typeid]):
@@ -95,7 +116,26 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             #             traitid=result.inserted_primary_key
             #             for languageid in trait.get('bonusText',{}):
             #                 connection.execute(trnTranslations.insert().values(tcID=1002,keyID=traitid[0],languageID=languageid,text=trait['bonusText'][languageid]))
+
             if 'metaGroupID' in typeids[typeid] or 'variationParentTypeID' in typeids[typeid]:
-                connection.execute(invMetaTypes.insert().values(typeID=typeid,metaGroupID=typeids[typeid].get('metaGroupID'),parentTypeID=typeids[typeid].get('variationParentTypeID')))
+                meta_type_rows.append({
+                    'typeID': typeid,
+                    'metaGroupID': typeids[typeid].get('metaGroupID'),
+                    'parentTypeID': typeids[typeid].get('variationParentTypeID')
+                })
+
+        # BULK INSERTS - 3 calls instead of 30,000+
+        if type_rows:
+            connection.execute(invTypes.insert(), type_rows)
+            print(f"  Inserted {len(type_rows)} types")
+
+        if translation_rows:
+            connection.execute(trnTranslations.insert(), translation_rows)
+            print(f"  Inserted {len(translation_rows)} translations")
+
+        if meta_type_rows:
+            connection.execute(invMetaTypes.insert(), meta_type_rows)
+            print(f"  Inserted {len(meta_type_rows)} meta types")
+
     trans.commit()
     print("  Done")

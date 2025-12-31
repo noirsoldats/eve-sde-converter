@@ -29,36 +29,44 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaEffects=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(dogmaEffects)} effects")
+
+        # Build bulk insert list
+        effect_rows = []
         for dogmaEffectsid in dogmaEffects:
             effect=dogmaEffects[dogmaEffectsid]
-            connection.execute(dgmEffects.insert().values(
-                                effectID=dogmaEffectsid,
-                                effectName=effect.get('name'),  # Changed from 'effectName' to 'name'
-                                effectCategory=effect.get('effectCategoryID'),  # Changed from effectCategory lookup
-                                description=effect.get('description',{}).get(language,'') if isinstance(effect.get('description'), dict) else 'None',
-                                guid=effect.get('guid'),
-                                iconID=effect.get('iconID'),
-                                isOffensive=effect.get('isOffensive', False),
-                                isAssistance=effect.get('isAssistance', False),
-                                durationAttributeID=effect.get('durationAttributeID'),
-                                trackingSpeedAttributeID=effect.get('trackingSpeedAttributeID'),
-                                dischargeAttributeID=effect.get('dischargeAttributeID'),
-                                rangeAttributeID=effect.get('rangeAttributeID'),
-                                falloffAttributeID=effect.get('falloffAttributeID'),
-                                disallowAutoRepeat=effect.get('disallowAutoRepeat'),
-                                published=effect.get('published'),
-                                displayName=effect.get('displayName',{}).get(language,'') if isinstance(effect.get('displayName'), dict) else effect.get('name', 'None'),
-                                isWarpSafe=effect.get('isWarpSafe'),
-                                rangeChance=effect.get('rangeChance'),
-                                electronicChance=effect.get('electronicChance'),
-                                propulsionChance=effect.get('propulsionChance'),
-                                distribution=distribution.get(effect.get('distribution')),
-                                sfxName=effect.get('sfxName'),
-                                npcUsageChanceAttributeID=effect.get('npcUsageChanceAttributeID'),
-                                npcActivationChanceAttributeID=effect.get('npcActivationChanceAttributeID'),
-                                fittingUsageChanceAttributeID=effect.get('fittingUsageChanceAttributeID'),
-                                modifierInfo=dump(effect.get('modifierInfo'))
+            effect_rows.append({
+                'effectID': dogmaEffectsid,
+                'effectName': effect.get('name'),  # Changed from 'effectName' to 'name'
+                'effectCategory': effect.get('effectCategoryID'),  # Changed from effectCategory lookup
+                'description': effect.get('description',{}).get(language,'') if isinstance(effect.get('description'), dict) else 'None',
+                'guid': effect.get('guid'),
+                'iconID': effect.get('iconID'),
+                'isOffensive': effect.get('isOffensive', False),
+                'isAssistance': effect.get('isAssistance', False),
+                'durationAttributeID': effect.get('durationAttributeID'),
+                'trackingSpeedAttributeID': effect.get('trackingSpeedAttributeID'),
+                'dischargeAttributeID': effect.get('dischargeAttributeID'),
+                'rangeAttributeID': effect.get('rangeAttributeID'),
+                'falloffAttributeID': effect.get('falloffAttributeID'),
+                'disallowAutoRepeat': effect.get('disallowAutoRepeat'),
+                'published': effect.get('published'),
+                'displayName': effect.get('displayName',{}).get(language,'') if isinstance(effect.get('displayName'), dict) else effect.get('name', 'None'),
+                'isWarpSafe': effect.get('isWarpSafe'),
+                'rangeChance': effect.get('rangeChance'),
+                'electronicChance': effect.get('electronicChance'),
+                'propulsionChance': effect.get('propulsionChance'),
+                'distribution': distribution.get(effect.get('distribution')),
+                'sfxName': effect.get('sfxName'),
+                'npcUsageChanceAttributeID': effect.get('npcUsageChanceAttributeID'),
+                'npcActivationChanceAttributeID': effect.get('npcActivationChanceAttributeID'),
+                'fittingUsageChanceAttributeID': effect.get('fittingUsageChanceAttributeID'),
+                'modifierInfo': dump(effect.get('modifierInfo'))
+            })
 
-            ))
+        # BULK INSERT - single database call
+        if effect_rows:
+            connection.execute(dgmEffects.insert(), effect_rows)
+            print(f"  Inserted {len(effect_rows)} effects")
+
     trans.commit()
     print("  Done")

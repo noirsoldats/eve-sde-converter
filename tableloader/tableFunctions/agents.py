@@ -39,28 +39,44 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             trans = connection.begin()
             npcCharacters=load(yamlstream,Loader=SafeLoader)
             print(f"  Processing {len(npcCharacters)} characters")
+
+            # Build bulk insert lists
+            agent_rows = []
+            name_rows = []
+
             for characterID in npcCharacters:
                 # Only process NPCs that have agent data
                 if 'agent' in npcCharacters[characterID]:
                     agent_data = npcCharacters[characterID]['agent']
-                    connection.execute(agtAgents.insert().values(
-                                    agentID=characterID,
-                                    divisionID=agent_data.get('divisionID',None),
-                                    corporationID=npcCharacters[characterID].get('corporationID',None),
-                                    isLocator=agent_data.get('isLocator',None),
-                                    level=agent_data.get('level',None),
-                                    locationID=npcCharacters[characterID].get('locationID',None),
-                                    agentTypeID=agent_data.get('agentTypeID',None),
-                                      ))
+                    agent_rows.append({
+                        'agentID': characterID,
+                        'divisionID': agent_data.get('divisionID',None),
+                        'corporationID': npcCharacters[characterID].get('corporationID',None),
+                        'isLocator': agent_data.get('isLocator',None),
+                        'level': agent_data.get('level',None),
+                        'locationID': npcCharacters[characterID].get('locationID',None),
+                        'agentTypeID': agent_data.get('agentTypeID',None)
+                    })
+
                     # Insert into invNames
                     if 'name' in npcCharacters[characterID]:
                         raw_name = npcCharacters[characterID]['name']
                         name_str = raw_name.get(language, raw_name.get('en', '')) if isinstance(raw_name, dict) else raw_name
-                        
-                        connection.execute(invNames.insert().values(
-                            itemID=characterID,
-                            itemName=name_str
-                        ))
+
+                        name_rows.append({
+                            'itemID': characterID,
+                            'itemName': name_str
+                        })
+
+            # BULK INSERTS
+            if agent_rows:
+                connection.execute(agtAgents.insert(), agent_rows)
+                print(f"  Inserted {len(agent_rows)} agents")
+
+            if name_rows:
+                connection.execute(invNames.insert(), name_rows)
+                print(f"  Inserted {len(name_rows)} agent names")
+
         trans.commit()
         print("  Done")
 
@@ -72,14 +88,24 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             trans = connection.begin()
             agents=load(yamlstream,Loader=SafeLoader)
             print(f"  Processing {len(agents)} agents")
+
+            # Build bulk insert list
+            space_rows = []
+
             for agentid in agents:
-                connection.execute(agtAgentsInSpace.insert().values(
-                                agentID=agentid,
-                                dungeonID=agents[agentid].get('dungeonID',None),
-                                solarSystemID=agents[agentid].get('solarSystemID',None),
-                                spawnPointID=agents[agentid].get('spawnPointID',None),
-                                typeID=agents[agentid].get('typeID',None),
-                                  ))
+                space_rows.append({
+                    'agentID': agentid,
+                    'dungeonID': agents[agentid].get('dungeonID',None),
+                    'solarSystemID': agents[agentid].get('solarSystemID',None),
+                    'spawnPointID': agents[agentid].get('spawnPointID',None),
+                    'typeID': agents[agentid].get('typeID',None)
+                })
+
+            # BULK INSERT
+            if space_rows:
+                connection.execute(agtAgentsInSpace.insert(), space_rows)
+                print(f"  Inserted {len(space_rows)} agents in space")
+
         trans.commit()
         print("  Done")
 
@@ -91,16 +117,26 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             trans = connection.begin()
             npcCharacters=load(yamlstream,Loader=SafeLoader)
             print(f"  Processing {len(npcCharacters)} characters")
+
+            # Build bulk insert list
+            research_rows = []
+
             for characterID in npcCharacters:
                 # Filter for research agents (agentTypeID == 4) with skills
                 if 'agent' in npcCharacters[characterID]:
                     if npcCharacters[characterID]['agent'].get('agentTypeID') == 4:
                         if 'skills' in npcCharacters[characterID]:
                             for skill in npcCharacters[characterID]['skills']:
-                                connection.execute(agtResearchAgents.insert().values(
-                                                agentID=characterID,
-                                                typeID=skill.get('typeID',None),
-                                              ))
+                                research_rows.append({
+                                    'agentID': characterID,
+                                    'typeID': skill.get('typeID',None)
+                                })
+
+            # BULK INSERT
+            if research_rows:
+                connection.execute(agtResearchAgents.insert(), research_rows)
+                print(f"  Inserted {len(research_rows)} research agents")
+
         trans.commit()
         print("  Done")
 
@@ -112,10 +148,20 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             trans = connection.begin()
             agentTypes=load(yamlstream,Loader=SafeLoader)
             print(f"  Processing {len(agentTypes)} agent types")
+
+            # Build bulk insert list
+            type_rows = []
+
             for agentTypeID in agentTypes:
-                connection.execute(agtAgentTypes.insert().values(
-                    agentTypeID=agentTypeID,
-                    agentType=agentTypes[agentTypeID].get('name',None),
-                  ))
+                type_rows.append({
+                    'agentTypeID': agentTypeID,
+                    'agentType': agentTypes[agentTypeID].get('name',None)
+                })
+
+            # BULK INSERT
+            if type_rows:
+                connection.execute(agtAgentTypes.insert(), type_rows)
+                print(f"  Inserted {len(type_rows)} agent types")
+
         trans.commit()
         print("  Done")

@@ -98,6 +98,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
         regions = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(regions)} regions")
 
+        region_rows = []
         for regionID, region in regions.items():
             # Extract name based on language
             name_data = region.get('name', {})
@@ -107,22 +108,26 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
             # Note: The new SDE doesn't provide min/max bounds, only position
             # We'll leave those as None or calculate them if needed
-            connection.execute(mapRegions.insert().values(
-                regionID=regionID,
-                regionName=regionName,
-                x=position.get('x'),
-                y=position.get('y'),
-                z=position.get('z'),
-                xMin=None,  # Not provided in new SDE
-                xMax=None,
-                yMin=None,
-                yMax=None,
-                zMin=None,
-                zMax=None,
-                factionID=region.get('factionID'),
-                nebula=region.get('nebulaID'),
-                radius=None  # Not provided in new SDE
-            ))
+            region_rows.append({
+                'regionID': regionID,
+                'regionName': regionName,
+                'x': position.get('x'),
+                'y': position.get('y'),
+                'z': position.get('z'),
+                'xMin': None,  # Not provided in new SDE
+                'xMax': None,
+                'yMin': None,
+                'yMax': None,
+                'zMin': None,
+                'zMax': None,
+                'factionID': region.get('factionID'),
+                'nebula': region.get('nebulaID'),
+                'radius': None  # Not provided in new SDE
+            })
+
+        if region_rows:
+            connection.execute(mapRegions.insert(), region_rows)
+            print(f"  Inserted {len(region_rows)} regions")
 
     connection.commit()
     print("  Done")
@@ -139,6 +144,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
         constellations = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(constellations)} constellations")
 
+        constellation_rows = []
         for constellationID, constellation in constellations.items():
             # Extract name based on language
             name_data = constellation.get('name', {})
@@ -146,22 +152,26 @@ def importyaml(connection,metadata,sourcePath,language='en'):
 
             position = constellation.get('position', {})
 
-            connection.execute(mapConstellations.insert().values(
-                constellationID=constellationID,
-                constellationName=constellationName,
-                regionID=constellation.get('regionID'),
-                x=position.get('x'),
-                y=position.get('y'),
-                z=position.get('z'),
-                xMin=None,
-                xMax=None,
-                yMin=None,
-                yMax=None,
-                zMin=None,
-                zMax=None,
-                factionID=constellation.get('factionID'),
-                radius=None
-            ))
+            constellation_rows.append({
+                'constellationID': constellationID,
+                'constellationName': constellationName,
+                'regionID': constellation.get('regionID'),
+                'x': position.get('x'),
+                'y': position.get('y'),
+                'z': position.get('z'),
+                'xMin': None,
+                'xMax': None,
+                'yMin': None,
+                'yMax': None,
+                'zMin': None,
+                'zMax': None,
+                'factionID': constellation.get('factionID'),
+                'radius': None
+            })
+
+        if constellation_rows:
+            connection.execute(mapConstellations.insert(), constellation_rows)
+            print(f"  Inserted {len(constellation_rows)} constellations")
 
     connection.commit()
     print("  Done")
@@ -178,6 +188,7 @@ def importyaml(connection,metadata,sourcePath,language='en'):
         systems = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(systems)} solar systems")
 
+        system_rows = []
         for solarSystemID, system in systems.items():
             # Extract name based on language
             name_data = system.get('name', {})
@@ -186,37 +197,41 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             position = system.get('position', {})
             position2D = system.get('position2D', {})
 
-            connection.execute(mapSolarSystems.insert().values(
-                solarSystemID=solarSystemID,
-                solarSystemName=solarSystemName,
-                regionID=system.get('regionID'),
-                constellationID=system.get('constellationID'),
-                x=position.get('x'),
-                y=position.get('y'),
-                z=position.get('z'),
-                xMin=None,
-                xMax=None,
-                yMin=None,
-                yMax=None,
-                zMin=None,
-                zMax=None,
-                luminosity=system.get('luminosity'),
-                border=system.get('border', False),
-                fringe=system.get('fringe', False),
-                corridor=system.get('corridor', False),
-                hub=system.get('hub', False),
-                international=system.get('international', False),
-                regional=system.get('regional', False),
-                constellation=None,  # Not in new SDE
-                security=system.get('securityStatus'),
-                factionID=system.get('factionID'),
-                radius=system.get('radius'),
-                sunTypeID=None,
-                starID=system.get('starID'),
-                securityClass=system.get('securityClass'),
-                x2D=position2D.get('x'),
-                y2D=position2D.get('y')
-            ))
+            system_rows.append({
+                'solarSystemID': solarSystemID,
+                'solarSystemName': solarSystemName,
+                'regionID': system.get('regionID'),
+                'constellationID': system.get('constellationID'),
+                'x': position.get('x'),
+                'y': position.get('y'),
+                'z': position.get('z'),
+                'xMin': None,
+                'xMax': None,
+                'yMin': None,
+                'yMax': None,
+                'zMin': None,
+                'zMax': None,
+                'luminosity': system.get('luminosity'),
+                'border': system.get('border', False),
+                'fringe': system.get('fringe', False),
+                'corridor': system.get('corridor', False),
+                'hub': system.get('hub', False),
+                'international': system.get('international', False),
+                'regional': system.get('regional', False),
+                'constellation': None,  # Not in new SDE
+                'security': system.get('securityStatus'),
+                'factionID': system.get('factionID'),
+                'radius': system.get('radius'),
+                'sunTypeID': None,
+                'starID': system.get('starID'),
+                'securityClass': system.get('securityClass'),
+                'x2D': position2D.get('x'),
+                'y2D': position2D.get('y')
+            })
+
+        if system_rows:
+            connection.execute(mapSolarSystems.insert(), system_rows)
+            print(f"  Inserted {len(system_rows)} solar systems")
 
     connection.commit()
     print("  Done")
@@ -234,36 +249,45 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             stargates = load(yamlstream, Loader=SafeLoader)
             print(f"  Processing {len(stargates)} stargates")
 
+            jump_rows = []
+            denormalize_rows = []
             for stargateID, stargate in stargates.items():
                 # Add to mapJumps for navigation
                 destination = stargate.get('destination')
                 if destination:
                     # destination is a dict with 'stargateID' and 'solarSystemID'
                     destinationID = destination.get('stargateID') if isinstance(destination, dict) else destination
-                    connection.execute(mapJumps.insert().values(
-                        stargateID=stargateID,
-                        destinationID=destinationID
-                    ))
+                    jump_rows.append({
+                        'stargateID': stargateID,
+                        'destinationID': destinationID
+                    })
 
                 # Add to mapDenormalize
                 position = stargate.get('position', {})
-                connection.execute(mapDenormalize.insert().values(
-                    itemID=stargateID,
-                    typeID=stargate.get('typeID'),
-                    groupID=grouplookup(connection, metadata, stargate.get('typeID'), defaultid=gid_stargate),
-                    solarSystemID=stargate.get('solarSystemID'),
-                    constellationID=None,  # Will be filled by denormalization
-                    regionID=None,  # Will be filled by denormalization
-                    orbitID=None,
-                    x=position.get('x'),
-                    y=position.get('y'),
-                    z=position.get('z'),
-                    radius=None,
-                    itemName=None,  # Stargates don't have custom names in new SDE
-                    security=None,
-                    celestialIndex=None,
-                    orbitIndex=None
-                ))
+                denormalize_rows.append({
+                    'itemID': stargateID,
+                    'typeID': stargate.get('typeID'),
+                    'groupID': grouplookup(connection, metadata, stargate.get('typeID'), defaultid=gid_stargate),
+                    'solarSystemID': stargate.get('solarSystemID'),
+                    'constellationID': None,  # Will be filled by denormalization
+                    'regionID': None,  # Will be filled by denormalization
+                    'orbitID': None,
+                    'x': position.get('x'),
+                    'y': position.get('y'),
+                    'z': position.get('z'),
+                    'radius': None,
+                    'itemName': None,  # Stargates don't have custom names in new SDE
+                    'security': None,
+                    'celestialIndex': None,
+                    'orbitIndex': None
+                })
+
+            if jump_rows:
+                connection.execute(mapJumps.insert(), jump_rows)
+                print(f"  Inserted {len(jump_rows)} stargate jumps")
+            if denormalize_rows:
+                connection.execute(mapDenormalize.insert(), denormalize_rows)
+                print(f"  Inserted {len(denormalize_rows)} stargates into mapDenormalize")
 
         connection.commit()
         print("  Done")
@@ -283,25 +307,30 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             planets = load(yamlstream, Loader=SafeLoader)
             print(f"  Processing {len(planets)} planets")
 
+            planet_rows = []
             for planetID, planet in planets.items():
                 position = planet.get('position', {})
-                connection.execute(mapDenormalize.insert().values(
-                    itemID=planetID,
-                    typeID=planet.get('typeID'),
-                    groupID=grouplookup(connection, metadata, planet.get('typeID'), defaultid=gid_planet),
-                    solarSystemID=planet.get('solarSystemID'),
-                    constellationID=None,
-                    regionID=None,
-                    orbitID=None,
-                    x=position.get('x'),
-                    y=position.get('y'),
-                    z=position.get('z'),
-                    radius=planet.get('radius'),
-                    itemName=None,
-                    security=None,
-                    celestialIndex=planet.get('celestialIndex'),
-                    orbitIndex=None
-                ))
+                planet_rows.append({
+                    'itemID': planetID,
+                    'typeID': planet.get('typeID'),
+                    'groupID': grouplookup(connection, metadata, planet.get('typeID'), defaultid=gid_planet),
+                    'solarSystemID': planet.get('solarSystemID'),
+                    'constellationID': None,
+                    'regionID': None,
+                    'orbitID': None,
+                    'x': position.get('x'),
+                    'y': position.get('y'),
+                    'z': position.get('z'),
+                    'radius': planet.get('radius'),
+                    'itemName': None,
+                    'security': None,
+                    'celestialIndex': planet.get('celestialIndex'),
+                    'orbitIndex': None
+                })
+
+            if planet_rows:
+                connection.execute(mapDenormalize.insert(), planet_rows)
+                print(f"  Inserted {len(planet_rows)} planets into mapDenormalize")
 
         connection.commit()
         print("  Done")
@@ -321,25 +350,30 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             moons = load(yamlstream, Loader=SafeLoader)
             print(f"  Processing {len(moons)} moons")
 
+            moon_rows = []
             for moonID, moon in moons.items():
                 position = moon.get('position', {})
-                connection.execute(mapDenormalize.insert().values(
-                    itemID=moonID,
-                    typeID=moon.get('typeID'),
-                    groupID=grouplookup(connection, metadata, moon.get('typeID'), defaultid=gid_moon),
-                    solarSystemID=moon.get('solarSystemID'),
-                    constellationID=None,
-                    regionID=None,
-                    orbitID=moon.get('planetID'),  # Moons orbit planets
-                    x=position.get('x'),
-                    y=position.get('y'),
-                    z=position.get('z'),
-                    radius=moon.get('radius'),
-                    itemName=None,
-                    security=None,
-                    celestialIndex=None,
-                    orbitIndex=None
-                ))
+                moon_rows.append({
+                    'itemID': moonID,
+                    'typeID': moon.get('typeID'),
+                    'groupID': grouplookup(connection, metadata, moon.get('typeID'), defaultid=gid_moon),
+                    'solarSystemID': moon.get('solarSystemID'),
+                    'constellationID': None,
+                    'regionID': None,
+                    'orbitID': moon.get('planetID'),  # Moons orbit planets
+                    'x': position.get('x'),
+                    'y': position.get('y'),
+                    'z': position.get('z'),
+                    'radius': moon.get('radius'),
+                    'itemName': None,
+                    'security': None,
+                    'celestialIndex': None,
+                    'orbitIndex': None
+                })
+
+            if moon_rows:
+                connection.execute(mapDenormalize.insert(), moon_rows)
+                print(f"  Inserted {len(moon_rows)} moons into mapDenormalize")
 
         connection.commit()
         print("  Done")
@@ -359,25 +393,30 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             belts = load(yamlstream, Loader=SafeLoader)
             print(f"  Processing {len(belts)} asteroid belts")
 
+            belt_rows = []
             for beltID, belt in belts.items():
                 position = belt.get('position', {})
-                connection.execute(mapDenormalize.insert().values(
-                    itemID=beltID,
-                    typeID=belt.get('typeID'),
-                    groupID=grouplookup(connection, metadata, belt.get('typeID'), defaultid=gid_asteroid),
-                    solarSystemID=belt.get('solarSystemID'),
-                    constellationID=None,
-                    regionID=None,
-                    orbitID=None,
-                    x=position.get('x'),
-                    y=position.get('y'),
-                    z=position.get('z'),
-                    radius=None,
-                    itemName=None,
-                    security=None,
-                    celestialIndex=None,
-                    orbitIndex=None
-                ))
+                belt_rows.append({
+                    'itemID': beltID,
+                    'typeID': belt.get('typeID'),
+                    'groupID': grouplookup(connection, metadata, belt.get('typeID'), defaultid=gid_asteroid),
+                    'solarSystemID': belt.get('solarSystemID'),
+                    'constellationID': None,
+                    'regionID': None,
+                    'orbitID': None,
+                    'x': position.get('x'),
+                    'y': position.get('y'),
+                    'z': position.get('z'),
+                    'radius': None,
+                    'itemName': None,
+                    'security': None,
+                    'celestialIndex': None,
+                    'orbitIndex': None
+                })
+
+            if belt_rows:
+                connection.execute(mapDenormalize.insert(), belt_rows)
+                print(f"  Inserted {len(belt_rows)} asteroid belts into mapDenormalize")
 
         connection.commit()
         print("  Done")
@@ -397,25 +436,30 @@ def importyaml(connection,metadata,sourcePath,language='en'):
             stars = load(yamlstream, Loader=SafeLoader)
             print(f"  Processing {len(stars)} stars")
 
+            star_rows = []
             for starID, star in stars.items():
                 position = star.get('position', {})
-                connection.execute(mapDenormalize.insert().values(
-                    itemID=starID,
-                    typeID=star.get('typeID'),
-                    groupID=grouplookup(connection, metadata, star.get('typeID'), defaultid=gid_sun),
-                    solarSystemID=star.get('solarSystemID'),
-                    constellationID=None,
-                    regionID=None,
-                    orbitID=None,
-                    x=position.get('x'),
-                    y=position.get('y'),
-                    z=position.get('z'),
-                    radius=star.get('radius'),
-                    itemName=None,
-                    security=None,
-                    celestialIndex=None,
-                    orbitIndex=None
-                ))
+                star_rows.append({
+                    'itemID': starID,
+                    'typeID': star.get('typeID'),
+                    'groupID': grouplookup(connection, metadata, star.get('typeID'), defaultid=gid_sun),
+                    'solarSystemID': star.get('solarSystemID'),
+                    'constellationID': None,
+                    'regionID': None,
+                    'orbitID': None,
+                    'x': position.get('x'),
+                    'y': position.get('y'),
+                    'z': position.get('z'),
+                    'radius': star.get('radius'),
+                    'itemName': None,
+                    'security': None,
+                    'celestialIndex': None,
+                    'orbitIndex': None
+                })
+
+            if star_rows:
+                connection.execute(mapDenormalize.insert(), star_rows)
+                print(f"  Inserted {len(star_rows)} stars into mapDenormalize")
 
         connection.commit()
         print("  Done")
@@ -423,48 +467,95 @@ def importyaml(connection,metadata,sourcePath,language='en'):
         print("  Warning: mapStars.yaml not found, skipping")
 
 
-def buildJumps(connection,connectiontype):
+def buildJumps(connection, metadata):
+    """
+    Build jump connection tables using database-agnostic SQLAlchemy Core queries.
 
-    sql={}
-    sql['postgres']=[]
-    sql['postgresschema']=[]
-    sql['other']=[]
+    Creates:
+    - mapSolarSystemJumps: Solar system to solar system connections
+    - mapRegionJumps: Region to region connections (distinct)
+    - mapConstellationJumps: Constellation to constellation connections (distinct)
+    """
+    print("Building jump tables...")
 
-    sql['postgres'].append("""insert into "mapSolarSystemJumps" ("fromRegionID","fromConstellationID","fromSolarSystemID","toRegionID","toConstellationID","toSolarSystemID")
-    select f."regionID" "fromRegionID",f."constellationID" "fromConstellationID",f."solarSystemID" "fromSolarSystemID",t."regionID" "toRegionID",t."constellationID" "toConstellationID",t."solarSystemID" "toSolarSystemID"
-    from "mapJumps" join "mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join "mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" """)
-    sql['postgres'].append("""insert into "mapRegionJumps"
-    select distinct f."regionID",t."regionID"
-    from "mapJumps" join "mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join "mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" where f."regionID"!=t."regionID" """)
-    sql['postgres'].append("""insert into "mapConstellationJumps"
-    select distinct f."regionID",f."constellationID",t."constellationID",t."regionID"
-    from "mapJumps" join "mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join "mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" where f."constellationID"!=t."constellationID" """)
-    sql['postgresschema'].append("""insert into evesde."mapSolarSystemJumps" ("fromRegionID","fromConstellationID","fromSolarSystemID","toRegionID","toConstellationID","toSolarSystemID")
-    select f."regionID" "fromRegionID",f."constellationID" "fromConstellationID",f."solarSystemID" "fromSolarSystemID",t."regionID" "toRegionID",t."constellationID" "toConstellationID",t."solarSystemID" "toSolarSystemID"
-    from  evesde."mapJumps" join  evesde."mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join  evesde."mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" """)
-    sql['postgresschema'].append("""insert into  evesde."mapRegionJumps"
-    select distinct f."regionID",t."regionID"
-    from  evesde."mapJumps" join  evesde."mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join  evesde."mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" where f."regionID"!=t."regionID" """)
-    sql['postgresschema'].append("""insert into  evesde."mapConstellationJumps"
-    select distinct f."regionID",f."constellationID",t."constellationID",t."regionID"
-    from  evesde."mapJumps" join  evesde."mapDenormalize" f on "mapJumps"."stargateID"=f."itemID" join  evesde."mapDenormalize" t on "mapJumps"."destinationID"=t."itemID" where f."constellationID"!=t."constellationID" """)
+    # Get table references from metadata (tables already defined and created)
+    mapJumps = Table('mapJumps', metadata)
+    mapDenormalize = Table('mapDenormalize', metadata)
+    mapSolarSystemJumps = Table('mapSolarSystemJumps', metadata)
+    mapRegionJumps = Table('mapRegionJumps', metadata)
+    mapConstellationJumps = Table('mapConstellationJumps', metadata)
 
-    sql['other'].append("""insert into mapSolarSystemJumps (fromRegionID,fromConstellationID,fromSolarSystemID,toRegionID,toConstellationID,toSolarSystemID)
-    select f.regionID fromRegionID,f.constellationID fromConstellationID,f.solarSystemID fromSolarSystemID,t.regionID toRegionID,t.constellationID toConstellationID,t.solarSystemID toSolarSystemID
-    from mapJumps join mapDenormalize f on mapJumps.stargateID=f.itemID join mapDenormalize t on mapJumps.destinationID=t.itemID""")
-    sql['other'].append("""insert into mapRegionJumps
-    select distinct f.regionID,t.regionID
-    from mapJumps join mapDenormalize f on mapJumps.stargateID=f.itemID join mapDenormalize t on mapJumps.destinationID=t.itemID where f.regionID!=t.regionID""")
-    sql['other'].append("""insert into mapConstellationJumps
-    select distinct f.regionID,f.constellationID,t.constellationID,t.regionID
-    from mapJumps join mapDenormalize f on mapJumps.stargateID=f.itemID join mapDenormalize t on mapJumps.destinationID=t.itemID where f.constellationID!=t.constellationID""")
+    # Create aliases for self-joins (f = from, t = to)
+    f = mapDenormalize.alias('f')
+    t = mapDenormalize.alias('t')
 
-    if connectiontype == "sqlite" or connectiontype == "mysql" or connectiontype=="mssql":
-        connectiontype="other"
-    connection.execute(text(sql[connectiontype][0]))
-    connection.execute(text(sql[connectiontype][1]))
-    connection.execute(text(sql[connectiontype][2]))
+    # Query 1: Solar System Jumps
+    # Maps stargate connections to solar system connections
+    print("  Building solar system jumps...")
+    solar_system_query = select(
+        f.c.regionID.label('fromRegionID'),
+        f.c.constellationID.label('fromConstellationID'),
+        f.c.solarSystemID.label('fromSolarSystemID'),
+        t.c.regionID.label('toRegionID'),
+        t.c.constellationID.label('toConstellationID'),
+        t.c.solarSystemID.label('toSolarSystemID')
+    ).select_from(
+        mapJumps.join(f, mapJumps.c.stargateID == f.c.itemID)
+                .join(t, mapJumps.c.destinationID == t.c.itemID)
+    )
+
+    connection.execute(
+        mapSolarSystemJumps.insert().from_select(
+            ['fromRegionID', 'fromConstellationID', 'fromSolarSystemID',
+             'toRegionID', 'toConstellationID', 'toSolarSystemID'],
+            solar_system_query
+        )
+    )
+
+    # Query 2: Region Jumps (DISTINCT)
+    # Maps unique region-to-region connections
+    print("  Building region jumps...")
+    region_query = select(
+        f.c.regionID,
+        t.c.regionID
+    ).distinct().select_from(
+        mapJumps.join(f, mapJumps.c.stargateID == f.c.itemID)
+                .join(t, mapJumps.c.destinationID == t.c.itemID)
+    ).where(
+        f.c.regionID != t.c.regionID
+    )
+
+    connection.execute(
+        mapRegionJumps.insert().from_select(
+            ['fromRegionID', 'toRegionID'],
+            region_query
+        )
+    )
+
+    # Query 3: Constellation Jumps (DISTINCT)
+    # Maps unique constellation-to-constellation connections
+    print("  Building constellation jumps...")
+    constellation_query = select(
+        f.c.regionID,
+        f.c.constellationID,
+        t.c.constellationID,
+        t.c.regionID
+    ).distinct().select_from(
+        mapJumps.join(f, mapJumps.c.stargateID == f.c.itemID)
+                .join(t, mapJumps.c.destinationID == t.c.itemID)
+    ).where(
+        f.c.constellationID != t.c.constellationID
+    )
+
+    connection.execute(
+        mapConstellationJumps.insert().from_select(
+            ['fromRegionID', 'fromConstellationID', 'toConstellationID', 'toRegionID'],
+            constellation_query
+        )
+    )
+
     connection.commit()
+    print("  Done building jump tables")
 
 
 def fixStationNames(connection,metadata):

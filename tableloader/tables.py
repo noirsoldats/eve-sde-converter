@@ -175,16 +175,16 @@ def metadataCreator(schema):
             Column('extent', CHAR(length=1)),
             Column('solarSystemID', INTEGER()),
             Column('investorID1', INTEGER()),
-            Column('investorShares1', INTEGER()),
+            Column('investorShares1', BIGINT()),
             Column('investorID2', INTEGER()),
-            Column('investorShares2', INTEGER()),
+            Column('investorShares2', BIGINT()),
             Column('investorID3', INTEGER()),
-            Column('investorShares3', INTEGER()),
+            Column('investorShares3', BIGINT()),
             Column('investorID4', INTEGER()),
-            Column('investorShares4', INTEGER()),
+            Column('investorShares4', BIGINT()),
             Column('friendID', INTEGER()),
             Column('enemyID', INTEGER()),
-            Column('publicShares', INTEGER()),
+            Column('publicShares', BIGINT()),
             Column('initialPrice', INTEGER()),
             Column('minSecurity', FLOAT()),
             Column('scattered', Boolean(name='cnpcc_scatt')),
@@ -226,7 +226,7 @@ def metadataCreator(schema):
             Column('iconID', INTEGER()),
             Column('defaultValue', FLOAT()),
             Column('published', Boolean(name='dat_pub')),
-            Column('displayName', VARCHAR(length=150)),
+            Column('displayName', VARCHAR(length=200)),
             Column('unitID', INTEGER()),
             Column('stackable', Boolean(name='dat_stack')),
             Column('highIsGood', Boolean(name='dat_hig')),
@@ -253,7 +253,7 @@ def metadataCreator(schema):
             Column('falloffAttributeID', INTEGER()),
             Column('disallowAutoRepeat', Boolean(name='de_disallowar')),
             Column('published', Boolean(name='de_published')),
-            Column('displayName', VARCHAR(length=100)),
+            Column('displayName', VARCHAR(length=150)),
             Column('isWarpSafe', Boolean(name='de_warpsafe')),
             Column('rangeChance', Boolean(name='de_rangechance')),
             Column('electronicChance', Boolean(name='de_elecchance')),
@@ -322,7 +322,7 @@ def metadataCreator(schema):
     eveUnits =  Table('eveUnits', metadata,
             Column('unitID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('unitName', VARCHAR(length=100)),
-            Column('displayName', VARCHAR(length=50)),
+            Column('displayName', VARCHAR(length=100)),
             Column('description', VARCHAR(length=1000)),
             schema=schema
     )
@@ -880,7 +880,7 @@ def metadataCreator(schema):
 
     skinMaterials =  Table('skinMaterials', metadata,
             Column('skinMaterialID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
-            Column('displayName', INTEGER()),
+            Column('displayName', VARCHAR(length=100)),
             Column('materialSetID', INTEGER()),
             schema=schema
     )
@@ -912,7 +912,7 @@ def metadataCreator(schema):
             Column('activityID', INTEGER()),
             Column('operationID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('operationName', VARCHAR(length=100)),
-            Column('description', VARCHAR(length=1000)),
+            Column('description', TEXT()),
             Column('fringe', INTEGER()),
             Column('corridor', INTEGER()),
             Column('hub', INTEGER()),
@@ -930,7 +930,7 @@ def metadataCreator(schema):
     staServices =  Table('staServices', metadata,
             Column('serviceID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
             Column('serviceName', VARCHAR(length=100)),
-            Column('description', VARCHAR(length=1000)),
+            Column('description', TEXT()),
             schema=schema
     )
 
@@ -1033,7 +1033,7 @@ def metadataCreator(schema):
             Column('activityKey', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
             Column('bonusType', VARCHAR(length=50), primary_key=True, autoincrement=False, nullable=False),
             Column('dogmaAttributeID', INTEGER(), primary_key=True, autoincrement=False, nullable=False),
-            Column('filterID', INTEGER(), primary_key=True, autoincrement=False, nullable=True),
+            Column('filterID', INTEGER(), nullable=True),  # Not part of PK because it can be NULL
             schema=schema
     )
 

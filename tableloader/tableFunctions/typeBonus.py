@@ -22,11 +22,14 @@ def importyaml(connection, metadata, sourcePath, language='en'):
     if not os.path.exists(targetPath):
         targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'typeBonus.yaml')
 
-    print(f"Opening {targetPath}")
+    print(f"  Opening {targetPath}")
     with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         trans = connection.begin()
         typeBonuses = load(yamlstream, Loader=SafeLoader)
-        print(f"Populating Type Bonuses Table with {len(typeBonuses)} entries")
+        print(f"  Populating Type Bonuses Table with {len(typeBonuses)} entries")
+
+        # Build bulk insert list
+        trait_rows = []
 
         for typeID in typeBonuses:
             typeData = typeBonuses[typeID]
@@ -41,13 +44,13 @@ def importyaml(connection, metadata, sourcePath, language='en'):
                     else:
                         bonusText = str(bonusText_data) if bonusText_data else ''
 
-                    connection.execute(invTraits.insert().values(
-                        typeID=typeID,
-                        skillID=-1,  # Role bonuses use -1 as skillID
-                        bonus=bonus.get('bonus'),
-                        bonusText=bonusText,
-                        unitID=bonus.get('unitID')
-                    ))
+                    trait_rows.append({
+                        'typeID': typeID,
+                        'skillID': -1,  # Role bonuses use -1 as skillID
+                        'bonus': bonus.get('bonus'),
+                        'bonusText': bonusText,
+                        'unitID': bonus.get('unitID')
+                    })
 
             # Process type-specific bonuses (skillID from key)
             if 'types' in typeData:
@@ -60,12 +63,18 @@ def importyaml(connection, metadata, sourcePath, language='en'):
                         else:
                             bonusText = str(bonusText_data) if bonusText_data else ''
 
-                        connection.execute(invTraits.insert().values(
-                            typeID=typeID,
-                            skillID=skillID,
-                            bonus=bonus.get('bonus'),
-                            bonusText=bonusText,
-                            unitID=bonus.get('unitID')
-                        ))
+                        trait_rows.append({
+                            'typeID': typeID,
+                            'skillID': skillID,
+                            'bonus': bonus.get('bonus'),
+                            'bonusText': bonusText,
+                            'unitID': bonus.get('unitID')
+                        })
+
+        # BULK INSERT
+        if trait_rows:
+            connection.execute(invTraits.insert(), trait_rows)
+            print(f"  Inserted {len(trait_rows)} traits")
 
     trans.commit()
+    print("  Done")

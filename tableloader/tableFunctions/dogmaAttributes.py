@@ -26,20 +26,29 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         dogmaAttributes=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(dogmaAttributes)} attributes")
+
+        # Build bulk insert list
+        attribute_rows = []
         for dogmaAttributeID in dogmaAttributes:
             attribute = dogmaAttributes[dogmaAttributeID]
-            connection.execute(dgmAttributes.insert().values(
-                               attributeID=dogmaAttributeID,
-                               categoryID=attribute.get('attributeCategoryID'),
-                               defaultValue=attribute.get('defaultValue'),
-                               description=attribute.get('description'),
-                               iconID=attribute.get('iconID'),
-                               attributeName=attribute.get('displayName',{}).get(language, 'None'),
-                               published=attribute.get('published'),
-                               unitID=attribute.get('unitID'),
-                               stackable=attribute.get('stackable'),
-                               highIsGood=attribute.get('highIsGood'),
-                               displayName=attribute.get('displayName',{}).get(language, 'None'),
-                ))
+            attribute_rows.append({
+                'attributeID': dogmaAttributeID,
+                'categoryID': attribute.get('attributeCategoryID'),
+                'defaultValue': attribute.get('defaultValue'),
+                'description': attribute.get('description'),
+                'iconID': attribute.get('iconID'),
+                'attributeName': attribute.get('displayName',{}).get(language, 'None'),
+                'published': attribute.get('published'),
+                'unitID': attribute.get('unitID'),
+                'stackable': attribute.get('stackable'),
+                'highIsGood': attribute.get('highIsGood'),
+                'displayName': attribute.get('displayName',{}).get(language, 'None'),
+            })
+
+        # BULK INSERT - single database call
+        if attribute_rows:
+            connection.execute(dgmAttributes.insert(), attribute_rows)
+            print(f"  Inserted {len(attribute_rows)} attributes")
+
     trans.commit()
     print("  Done")

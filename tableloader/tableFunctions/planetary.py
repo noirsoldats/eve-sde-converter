@@ -24,30 +24,51 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     if not os.path.exists(targetPath):
         targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'planetSchematics.yaml')
 
-    print(f"Opening {targetPath}")
+    print(f"  Opening {targetPath}")
         
     trans = connection.begin()
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         schematics=load(yamlstream,Loader=SafeLoader)
-        print(f"Populating Planetary Schematics Tables with {len(schematics)} entries")
+        print(f"  Populating Planetary Schematics Tables with {len(schematics)} entries")
+
+        # Build bulk insert lists
+        schematic_rows = []
+        pin_rows = []
+        type_rows = []
+
         for schematicid in schematics:
-            connection.execute(planetSchematics.insert().values(
-                            schematicID=schematicid,
-                            schematicName=schematics[schematicid].get('name',{}).get(language,''),
-                            cycleTime=schematics[schematicid].get('cycleTime'),
-            ))
+            schematic_rows.append({
+                'schematicID': schematicid,
+                'schematicName': schematics[schematicid].get('name',{}).get(language,''),
+                'cycleTime': schematics[schematicid].get('cycleTime')
+            })
+
             for pin in schematics[schematicid].get('pins',{}):
-                connection.execute(planetSchematicsPinMap.insert().values(
-                                schematicID=schematicid,
-                                pinTypeID=pin,
-                ))
+                pin_rows.append({
+                    'schematicID': schematicid,
+                    'pinTypeID': pin
+                })
 
             for typeid in schematics[schematicid].get('types',{}):
-                connection.execute(planetSchematicsTypeMap.insert().values(
-                                schematicID=schematicid,
-                                typeID=typeid,
-                                quantity=schematics[schematicid]['types'][typeid].get('quantity',0),
-                                isInput=schematics[schematicid]['types'][typeid].get('isInput',False),
-                ))
- 
+                type_rows.append({
+                    'schematicID': schematicid,
+                    'typeID': typeid,
+                    'quantity': schematics[schematicid]['types'][typeid].get('quantity',0),
+                    'isInput': schematics[schematicid]['types'][typeid].get('isInput',False)
+                })
+
+        # BULK INSERTS
+        if schematic_rows:
+            connection.execute(planetSchematics.insert(), schematic_rows)
+            print(f"  Inserted {len(schematic_rows)} planetary schematics")
+
+        if pin_rows:
+            connection.execute(planetSchematicsPinMap.insert(), pin_rows)
+            print(f"  Inserted {len(pin_rows)} schematic-pin mappings")
+
+        if type_rows:
+            connection.execute(planetSchematicsTypeMap.insert(), type_rows)
+            print(f"  Inserted {len(type_rows)} schematic-type mappings")
+
     trans.commit()
+    print("  Done")

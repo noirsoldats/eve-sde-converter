@@ -38,18 +38,39 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         categoryids=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(categoryids)} categories")
+
+        # Build bulk insert lists
+        category_rows = []
+        translation_rows = []
+
         for categoryid in categoryids:
-            connection.execute(invCategories.insert().values(
-                            categoryID=categoryid,
-                            categoryName=categoryids[categoryid].get('name',{}).get(language,''),
-                            iconID=categoryids[categoryid].get('iconID'),
-                            published=categoryids[categoryid].get('published',0)))
+            category_rows.append({
+                'categoryID': categoryid,
+                'categoryName': categoryids[categoryid].get('name',{}).get(language,''),
+                'iconID': categoryids[categoryid].get('iconID'),
+                'published': categoryids[categoryid].get('published',0)
+            })
 
             if ('name' in categoryids[categoryid]):
                 for lang in categoryids[categoryid]['name']:
                     try:
-                        connection.execute(trnTranslations.insert().values(tcID=6,keyID=categoryid,languageID=lang,text=categoryids[categoryid]['name'][lang]));
+                        translation_rows.append({
+                            'tcID': 6,
+                            'keyID': categoryid,
+                            'languageID': lang,
+                            'text': categoryids[categoryid]['name'][lang]
+                        })
                     except:
                         print(f"  Warning: Category {categoryid} ({lang}) has translation issue")
+
+        # BULK INSERTS
+        if category_rows:
+            connection.execute(invCategories.insert(), category_rows)
+            print(f"  Inserted {len(category_rows)} categories")
+
+        if translation_rows:
+            connection.execute(trnTranslations.insert(), translation_rows)
+            print(f"  Inserted {len(translation_rows)} category translations")
+
     trans.commit()
     print("  Done")

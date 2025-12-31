@@ -53,6 +53,10 @@ def importyaml(connection, metadata, sourcePath, language='en'):
         operations = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(operations)} station operations")
 
+        # Build bulk insert lists
+        operation_rows = []
+        operation_service_rows = []
+
         for operationID, operation in operations.items():
             # Extract operation name based on language
             name_data = operation.get('operationName', {})
@@ -66,30 +70,39 @@ def importyaml(connection, metadata, sourcePath, language='en'):
             # These map to factions: 1=Caldari, 2=Minmatar, 4=Amarr, 8=Gallente, 16=Jove
             station_types = operation.get('stationTypes', {})
 
-            connection.execute(staOperations.insert().values(
-                activityID=operation.get('activityID'),
-                operationID=operationID,
-                operationName=operationName,
-                description=description,
-                fringe=operation.get('fringe'),
-                corridor=operation.get('corridor'),
-                hub=operation.get('hub'),
-                border=operation.get('border'),
-                ratio=operation.get('ratio'),
-                caldariStationTypeID=station_types.get(1),
-                minmatarStationTypeID=station_types.get(2),
-                amarrStationTypeID=station_types.get(4),
-                gallenteStationTypeID=station_types.get(8),
-                joveStationTypeID=station_types.get(16)
-            ))
+            operation_rows.append({
+                'activityID': operation.get('activityID'),
+                'operationID': operationID,
+                'operationName': operationName,
+                'description': description,
+                'fringe': operation.get('fringe'),
+                'corridor': operation.get('corridor'),
+                'hub': operation.get('hub'),
+                'border': operation.get('border'),
+                'ratio': operation.get('ratio'),
+                'caldariStationTypeID': station_types.get(1),
+                'minmatarStationTypeID': station_types.get(2),
+                'amarrStationTypeID': station_types.get(4),
+                'gallenteStationTypeID': station_types.get(8),
+                'joveStationTypeID': station_types.get(16)
+            })
 
             # Import operation services (many-to-many relationship)
             services = operation.get('services', [])
             for serviceID in services:
-                connection.execute(staOperationServices.insert().values(
-                    operationID=operationID,
-                    serviceID=serviceID
-                ))
+                operation_service_rows.append({
+                    'operationID': operationID,
+                    'serviceID': serviceID
+                })
+
+        # BULK INSERTS
+        if operation_rows:
+            connection.execute(staOperations.insert(), operation_rows)
+            print(f"  Inserted {len(operation_rows)} operations")
+
+        if operation_service_rows:
+            connection.execute(staOperationServices.insert(), operation_service_rows)
+            print(f"  Inserted {len(operation_service_rows)} operation services")
 
     connection.commit()
     print("  Done")
@@ -105,6 +118,9 @@ def importyaml(connection, metadata, sourcePath, language='en'):
     with open(targetPath, 'r', encoding='utf-8') as yamlstream:
         stations = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(stations)} NPC stations")
+
+        # Build bulk insert list
+        station_rows = []
 
         for stationID, station in stations.items():
             position = station.get('position', {})
@@ -203,26 +219,31 @@ def importyaml(connection, metadata, sourcePath, language='en'):
                 # If not using operation name, just use a generic name
                 stationName = f"Op False Station {stationID}"
 
-            connection.execute(staStations.insert().values(
-                stationID=stationID,
-                security=security,
-                dockingCostPerVolume=None,  # Not in new SDE
-                maxShipVolumeDockable=None,  # Not in new SDE
-                officeRentalCost=None,  # Not in new SDE
-                operationID=station.get('operationID'),
-                stationTypeID=station.get('typeID'),
-                corporationID=corporationID,
-                solarSystemID=solarSystemID,
-                constellationID=constellationID,
-                regionID=regionID,
-                stationName=stationName,
-                x=position.get('x'),
-                y=position.get('y'),
-                z=position.get('z'),
-                reprocessingEfficiency=station.get('reprocessingEfficiency'),
-                reprocessingStationsTake=station.get('reprocessingStationsTake'),
-                reprocessingHangarFlag=station.get('reprocessingHangarFlag')
-            ))
+            station_rows.append({
+                'stationID': stationID,
+                'security': security,
+                'dockingCostPerVolume': None,  # Not in new SDE
+                'maxShipVolumeDockable': None,  # Not in new SDE
+                'officeRentalCost': None,  # Not in new SDE
+                'operationID': station.get('operationID'),
+                'stationTypeID': station.get('typeID'),
+                'corporationID': corporationID,
+                'solarSystemID': solarSystemID,
+                'constellationID': constellationID,
+                'regionID': regionID,
+                'stationName': stationName,
+                'x': position.get('x'),
+                'y': position.get('y'),
+                'z': position.get('z'),
+                'reprocessingEfficiency': station.get('reprocessingEfficiency'),
+                'reprocessingStationsTake': station.get('reprocessingStationsTake'),
+                'reprocessingHangarFlag': station.get('reprocessingHangarFlag')
+            })
+
+        # BULK INSERT
+        if station_rows:
+            connection.execute(staStations.insert(), station_rows)
+            print(f"  Inserted {len(station_rows)} NPC stations")
 
     connection.commit()
     print("  Done")
@@ -239,6 +260,9 @@ def importyaml(connection, metadata, sourcePath, language='en'):
         services = load(yamlstream, Loader=SafeLoader)
         print(f"  Processing {len(services)} station services")
 
+        # Build bulk insert list
+        service_rows = []
+
         for serviceID, service in services.items():
             # Extract service name based on language
             name_data = service.get('serviceName', {})
@@ -248,11 +272,16 @@ def importyaml(connection, metadata, sourcePath, language='en'):
             desc_data = service.get('description', {})
             description = desc_data.get(language, '') if isinstance(desc_data, dict) else ''
 
-            connection.execute(staServices.insert().values(
-                serviceID=serviceID,
-                serviceName=serviceName,
-                description=description
-            ))
+            service_rows.append({
+                'serviceID': serviceID,
+                'serviceName': serviceName,
+                'description': description
+            })
+
+        # BULK INSERT
+        if service_rows:
+            connection.execute(staServices.insert(), service_rows)
+            print(f"  Inserted {len(service_rows)} station services")
 
     connection.commit()
     print("  Done")

@@ -22,20 +22,31 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     if not os.path.exists(targetPath):
         targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'controlTowerResources.yaml')
 
-    print(f"Opening {targetPath}")
+    print(f"  Opening {targetPath}")
         
     trans = connection.begin()
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         controlTowerResources=load(yamlstream,Loader=SafeLoader)
-        print(f"Populating Control Tower Resources Table with {len(controlTowerResources)} entries")
+        print(f"  Populating Control Tower Resources Table with {len(controlTowerResources)} entries")
+
+        # Build bulk insert list
+        resource_rows = []
+
         for controlTowerResourcesid in controlTowerResources:
             for purpose in controlTowerResources[controlTowerResourcesid]['resources']:
-                connection.execute(invControlTowerResources.insert().values(
-                                controlTowerTypeID=controlTowerResourcesid,
-                                resourceTypeID=purpose['resourceTypeID'],
-                                purpose=purpose['purpose'],
-                                quantity=purpose.get('quantity',0),
-                                minSecurityLevel=purpose.get('minSecurityLevel',None),
-                                factionID=purpose.get('factionID',None)
-                ))
+                resource_rows.append({
+                    'controlTowerTypeID': controlTowerResourcesid,
+                    'resourceTypeID': purpose['resourceTypeID'],
+                    'purpose': purpose['purpose'],
+                    'quantity': purpose.get('quantity',0),
+                    'minSecurityLevel': purpose.get('minSecurityLevel',None),
+                    'factionID': purpose.get('factionID',None)
+                })
+
+        # BULK INSERT
+        if resource_rows:
+            connection.execute(invControlTowerResources.insert(), resource_rows)
+            print(f"  Inserted {len(resource_rows)} control tower resources")
+
     trans.commit()
+    print("  Done")

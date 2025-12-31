@@ -35,42 +35,90 @@ def importyaml(connection,metadata,sourcePath):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         blueprints=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(blueprints)} blueprints")
+
+        # Build bulk insert lists
+        blueprint_rows = []
+        activity_rows = []
+        material_rows = []
+        product_rows = []
+        probability_rows = []
+        skill_rows = []
+
         for blueprint in blueprints:
-            connection.execute(industryBlueprints.insert().values(typeID=blueprint,maxProductionLimit=blueprints[blueprint]["maxProductionLimit"]))
+            blueprint_rows.append({
+                'typeID': blueprint,
+                'maxProductionLimit': blueprints[blueprint]["maxProductionLimit"]
+            })
+
             for activity in blueprints[blueprint]['activities']:
-                connection.execute(industryActivity.insert().values(
-                                    typeID=blueprint,
-                                    activityID=activityIDs[activity],
-                                    time=blueprints[blueprint]['activities'][activity]['time']))
+                activity_rows.append({
+                    'typeID': blueprint,
+                    'activityID': activityIDs[activity],
+                    'time': blueprints[blueprint]['activities'][activity]['time']
+                })
+
                 if 'materials' in blueprints[blueprint]['activities'][activity]:
                     for material in blueprints[blueprint]['activities'][activity]['materials']:
-                        connection.execute(industryActivityMaterials.insert().values(
-                                            typeID=blueprint,
-                                            activityID=activityIDs[activity],
-                                            materialTypeID=material['typeID'],
-                                            quantity=material['quantity']))
+                        material_rows.append({
+                            'typeID': blueprint,
+                            'activityID': activityIDs[activity],
+                            'materialTypeID': material['typeID'],
+                            'quantity': material['quantity']
+                        })
+
                 if 'products' in blueprints[blueprint]['activities'][activity]:
                     for product in blueprints[blueprint]['activities'][activity]['products']:
-                        connection.execute(industryActivityProducts.insert().values(
-                                            typeID=blueprint,
-                                            activityID=activityIDs[activity],
-                                            productTypeID=product['typeID'],
-                                            quantity=product['quantity']))
+                        product_rows.append({
+                            'typeID': blueprint,
+                            'activityID': activityIDs[activity],
+                            'productTypeID': product['typeID'],
+                            'quantity': product['quantity']
+                        })
+
                         if 'probability' in product:
-                            connection.execute(industryActivityProbabilities.insert().values(
-                                                typeID=blueprint,
-                                                activityID=activityIDs[activity],
-                                                productTypeID=product['typeID'],
-                                                probability=product['probability']))
+                            probability_rows.append({
+                                'typeID': blueprint,
+                                'activityID': activityIDs[activity],
+                                'productTypeID': product['typeID'],
+                                'probability': product['probability']
+                            })
+
                 try:
                     if 'skills' in blueprints[blueprint]['activities'][activity]:
                         for skill in blueprints[blueprint]['activities'][activity]['skills']:
-                            connection.execute(industryActivitySkills.insert().values(
-                                                typeID=blueprint,
-                                                activityID=activityIDs[activity],
-                                                skillID=skill['typeID'],
-                                                level=skill['level']))
+                            skill_rows.append({
+                                'typeID': blueprint,
+                                'activityID': activityIDs[activity],
+                                'skillID': skill['typeID'],
+                                'level': skill['level']
+                            })
                 except:
                     print(f"  Warning: Blueprint {blueprint} has invalid skill data")
+
+        # BULK INSERTS - 6 calls instead of 25,000+
+        if blueprint_rows:
+            connection.execute(industryBlueprints.insert(), blueprint_rows)
+            print(f"  Inserted {len(blueprint_rows)} blueprints")
+
+        if activity_rows:
+            connection.execute(industryActivity.insert(), activity_rows)
+            print(f"  Inserted {len(activity_rows)} activities")
+
+        if material_rows:
+            connection.execute(industryActivityMaterials.insert(), material_rows)
+            print(f"  Inserted {len(material_rows)} materials")
+
+        if product_rows:
+            connection.execute(industryActivityProducts.insert(), product_rows)
+            print(f"  Inserted {len(product_rows)} products")
+
+        if probability_rows:
+            connection.execute(industryActivityProbabilities.insert(), probability_rows)
+            print(f"  Inserted {len(probability_rows)} probabilities")
+
+        if skill_rows:
+            connection.execute(industryActivitySkills.insert(), skill_rows)
+            print(f"  Inserted {len(skill_rows)} skills")
+
     trans.commit()
     print("  Done")

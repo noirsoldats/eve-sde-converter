@@ -23,13 +23,24 @@ def importyaml(connection,metadata,sourcePath):
         trans = connection.begin()
         graphics=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(graphics)} graphics")
+
+        # Build bulk insert list
+        graphic_rows = []
+
         for graphic in graphics:
-            connection.execute(eveGraphics.insert().values(
-                            graphicID=graphic,
-                            sofFactionName=graphics[graphic].get('sofFactionName',''),
-                            graphicFile=graphics[graphic].get('graphicFile',''),
-                            sofHullName=graphics[graphic].get('sofHullName',''),
-                            sofRaceName=graphics[graphic].get('sofRaceName',''),
-                            description=''))
+            graphic_rows.append({
+                'graphicID': graphic,
+                'sofFactionName': graphics[graphic].get('sofFactionName',''),
+                'graphicFile': graphics[graphic].get('graphicFile',''),
+                'sofHullName': graphics[graphic].get('sofHullName',''),
+                'sofRaceName': graphics[graphic].get('sofRaceName',''),
+                'description': ''
+            })
+
+        # BULK INSERT
+        if graphic_rows:
+            connection.execute(eveGraphics.insert(), graphic_rows)
+            print(f"  Inserted {len(graphic_rows)} graphics")
+
     trans.commit()
     print("  Done")

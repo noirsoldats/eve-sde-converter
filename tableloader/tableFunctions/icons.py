@@ -35,10 +35,21 @@ def importyaml(connection,metadata,sourcePath):
         trans = connection.begin()
         icons=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(icons)} icons")
+
+        # Build bulk insert list
+        icon_rows = []
+
         for icon in icons:
-            connection.execute(eveIcons.insert().values(
-                            iconID=icon,
-                            iconFile=icons[icon].get('iconFile',''),
-                            description=''))
+            icon_rows.append({
+                'iconID': icon,
+                'iconFile': icons[icon].get('iconFile',''),
+                'description': ''
+            })
+
+        # BULK INSERT
+        if icon_rows:
+            connection.execute(eveIcons.insert(), icon_rows)
+            print(f"  Inserted {len(icon_rows)} icons")
+
     trans.commit()
     print("  Done")

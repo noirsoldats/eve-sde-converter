@@ -23,30 +23,57 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     if not os.path.exists(targetPath):
         targetPath = os.path.join(sourcePath, 'sde', 'fsd', 'metaGroups.yaml')
 
-    print(f"Opening {targetPath}")
+    print(f"  Opening {targetPath}")
         
     trans = connection.begin()
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         metagroups=load(yamlstream,Loader=SafeLoader)
-        print(f"Populating Meta Groups Table with {len(metagroups)} entries")
+        print(f"  Populating Meta Groups Table with {len(metagroups)} entries")
+
+        # Build bulk insert lists
+        metagroup_rows = []
+        translation_rows = []
+
         for metagroupid in metagroups:
-            connection.execute(invMetaGroups.insert().values(
-                            metaGroupID=metagroupid,
-                            metaGroupName=metagroups[metagroupid].get('name',{}).get(language,''),
-                            iconID=metagroups[metagroupid].get('iconID'),
-                            description=metagroups[metagroupid].get('description',{}).get(language,'')
-            ))
+            metagroup_rows.append({
+                'metaGroupID': metagroupid,
+                'metaGroupName': metagroups[metagroupid].get('name',{}).get(language,''),
+                'iconID': metagroups[metagroupid].get('iconID'),
+                'description': metagroups[metagroupid].get('description',{}).get(language,'')
+            })
 
             if ('name' in metagroups[metagroupid]):
                 for lang in metagroups[metagroupid]['name']:
                     try:
-                        connection.execute(trnTranslations.insert().values(tcID=34,keyID=metagroupid,languageID=lang,text=metagroups[metagroupid]['name'][lang]));
+                        translation_rows.append({
+                            'tcID': 34,
+                            'keyID': metagroupid,
+                            'languageID': lang,
+                            'text': metagroups[metagroupid]['name'][lang]
+                        })
                     except:
                         print('{} {} has a category problem'.format(metagroupid,lang))
+
             if ('description' in metagroups[metagroupid]):
                 for lang in metagroups[metagroupid]['description']:
                     try:
-                        connection.execute(trnTranslations.insert().values(tcID=35,keyID=metagroupid,languageID=lang,text=metagroups[metagroupid]['description'][lang]));
-                    except:                        
+                        translation_rows.append({
+                            'tcID': 35,
+                            'keyID': metagroupid,
+                            'languageID': lang,
+                            'text': metagroups[metagroupid]['description'][lang]
+                        })
+                    except:
                         print('{} {} has a category problem'.format(metagroupid,lang))
+
+        # BULK INSERTS
+        if metagroup_rows:
+            connection.execute(invMetaGroups.insert(), metagroup_rows)
+            print(f"  Inserted {len(metagroup_rows)} meta groups")
+
+        if translation_rows:
+            connection.execute(trnTranslations.insert(), translation_rows)
+            print(f"  Inserted {len(translation_rows)} meta group translations")
+
     trans.commit()
+    print("  Done")

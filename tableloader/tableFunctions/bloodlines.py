@@ -25,20 +25,30 @@ def importyaml(connection,metadata,sourcePath,language='en'):
     with open(targetPath,'r', encoding='utf-8') as yamlstream:
         bloodlines=load(yamlstream,Loader=SafeLoader)
         print(f"  Processing {len(bloodlines)} bloodlines")
+
+        # Build bulk insert list
+        bloodline_rows = []
+
         for bloodlineid in bloodlines:
-            connection.execute(chrBloodlines.insert().values(
-                            bloodlineID=bloodlineid,
-                            bloodlineName=bloodlines[bloodlineid].get('name',{}).get(language,''),
-                            description=bloodlines[bloodlineid].get('description',{}).get(language,''),
-                            iconID=bloodlines[bloodlineid].get('iconID'),
-                            corporationID=bloodlines[bloodlineid].get('corporationID'),
-                            charisma=bloodlines[bloodlineid].get('charisma'),
-                            intelligence=bloodlines[bloodlineid].get('intelligence'),
-                            memory=bloodlines[bloodlineid].get('memory'),
-                            perception=bloodlines[bloodlineid].get('perception'),
-                            willpower=bloodlines[bloodlineid].get('willpower'),
-                            raceID=bloodlines[bloodlineid].get('raceID'),
-                            shipTypeID=bloodlines[bloodlineid].get('shipTypeID'),
-                              ))
+            bloodline_rows.append({
+                'bloodlineID': bloodlineid,
+                'bloodlineName': bloodlines[bloodlineid].get('name',{}).get(language,''),
+                'description': bloodlines[bloodlineid].get('description',{}).get(language,''),
+                'iconID': bloodlines[bloodlineid].get('iconID'),
+                'corporationID': bloodlines[bloodlineid].get('corporationID'),
+                'charisma': bloodlines[bloodlineid].get('charisma'),
+                'intelligence': bloodlines[bloodlineid].get('intelligence'),
+                'memory': bloodlines[bloodlineid].get('memory'),
+                'perception': bloodlines[bloodlineid].get('perception'),
+                'willpower': bloodlines[bloodlineid].get('willpower'),
+                'raceID': bloodlines[bloodlineid].get('raceID'),
+                'shipTypeID': bloodlines[bloodlineid].get('shipTypeID')
+            })
+
+        # BULK INSERT
+        if bloodline_rows:
+            connection.execute(chrBloodlines.insert(), bloodline_rows)
+            print(f"  Inserted {len(bloodline_rows)} bloodlines")
+
     trans.commit()
     print("  Done")
