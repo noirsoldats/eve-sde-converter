@@ -9,6 +9,8 @@ sde/
 .secrets
 .env
 /tmp/artifacts/
+latest.jsonl
+sde.zip
 eve.db
 eve-stripped.db
 eve-*.sql

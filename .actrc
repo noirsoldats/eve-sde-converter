@@ -3,7 +3,7 @@
 
 # Use larger runner image with more pre-installed tools
 # Options: node:16-buster-slim, catthehacker/ubuntu:act-latest, catthehacker/ubuntu:full-latest
--P ubuntu-latest=catthehacker/ubuntu:full-latest
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
 
 # Default event to trigger (can override with -e flag)
 --defaultbranch main

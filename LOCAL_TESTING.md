@@ -243,6 +243,26 @@ act -v -j build-databases
 
 ## Troubleshooting
 
+### act Memory Limitations (Exit Code 137)
+
+**Problem**: The full workflow fails with exit code 137 (OOM - Out of Memory) when running with act.
+
+**Cause**: The EVE SDE conversion process requires 4-6GB of RAM. Docker containers running under act have limited memory allocation, causing the Python process to be killed by the OOM killer.
+
+**Solution**:
+- **Use `test-manual` instead of `test-act`** - This is the recommended approach for testing database conversions locally
+- `test-manual` runs directly on your host machine (not in a Docker container) and doesn't have memory limitations
+- `test-act` is only useful for validating workflow syntax and structure, not for full end-to-end testing
+
+**Why this happens**:
+- GitHub Actions runners have 7GB RAM available
+- act runs workflows inside Docker containers with default memory limits (usually 2GB)
+- The SDE conversion loads large YAML files and builds in-memory indexes, requiring significant RAM
+- When memory is exhausted, the Linux OOM killer terminates the process with exit code 137
+
+**Workaround** (if you must use act):
+You can increase Docker's memory limit in Docker Desktop settings (Preferences → Resources → Memory), but this is not recommended as `test-manual` is more reliable and faster.
+
 ### MSSQL First-Time Startup
 
 MSSQL 2022 containers can take up to 2 minutes on first startup to upgrade system databases. The setup script waits for the healthcheck to pass, but MSSQL may need a few extra seconds to complete authentication initialization.

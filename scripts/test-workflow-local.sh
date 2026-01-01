@@ -187,16 +187,28 @@ test_with_act() {
         return 1
     fi
 
-    print_warning "NOTE: act testing requires the full workflow context."
-    print_warning "The build-databases job depends on check-and-update-sde outputs."
-    print_warning "For testing database conversions, use: $0 test-manual <db_type>"
+    print_warning "NOTE: act testing has significant memory requirements."
+    print_warning "The SDE conversion process requires ~4-6GB RAM and may fail with OOM errors in Docker."
+    print_warning "This is a known limitation of running heavy workflows locally with act."
     echo ""
+    print_info "For testing database conversions, use: $0 test-manual <db_type>"
+    print_info "The test-manual approach uses your local environment and is more reliable."
+    echo ""
+    read -p "Do you want to continue with act testing anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_info "Aborted. Use: $0 test-manual <db_type> for reliable local testing."
+        return 0
+    fi
+
     print_info "Testing full workflow with act..."
+    print_warning "This may take 20+ minutes and could fail with OOM errors..."
     cd "$PROJECT_ROOT"
 
     # Run the full workflow (not just build-databases)
     # This simulates a workflow_dispatch event
-    act workflow_dispatch -v
+    # Note: May fail with exit code 137 (OOM) due to memory constraints
+    act workflow_dispatch
 }
 
 # Function to test manually
@@ -506,7 +518,9 @@ FULL WORKFLOW:
 NOTE:
     - test-manual is RECOMMENDED for testing database conversions
     - test-act runs the full GitHub Actions workflow (including SDE download)
-    - test-act may take 20+ minutes and download ~500MB of SDE data
+    - test-act may take 20+ minutes, download ~500MB, and requires 4-6GB RAM
+    - test-act often fails with OOM (exit code 137) due to Docker memory limits
+    - For reliable testing, always use test-manual instead of test-act
 
 EOF
 }

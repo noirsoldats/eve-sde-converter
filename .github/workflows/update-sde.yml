@@ -200,6 +200,8 @@ jobs:
           curl -L -o sde.zip "$SDE_URL"
 
           echo "Extracting SDE..."
+          # Remove existing sde directory if it exists (for local act testing)
+          rm -rf sde
           unzip -q sde.zip -d sde
 
           echo "SDE ready at: sde/"
