@@ -568,8 +568,15 @@ def fixStationNames(connection,metadata):
 
     # Check if staStations table exists and has data
     try:
+        # Get dialect name to determine quoting strategy
+        dialect_name = connection.engine.dialect.name
+        if dialect_name in ('postgresql', 'mssql'):
+            quote = '"'
+        else:
+            quote = ''
+
         staStations = Table('staStations', metadata)
-        result = connection.execute(text("SELECT COUNT(*) FROM staStations")).fetchone()
+        result = connection.execute(text(f"SELECT COUNT(*) FROM {quote}staStations{quote}")).fetchone()
         if result and result[0] > 0:
             print(f"Found {result[0]} stations, station names should already be populated from npcStations.yaml")
         else:

@@ -1,0 +1,39 @@
+# act Configuration File
+# This file configures the behavior of act (GitHub Actions local runner)
+
+# Use larger runner image with more pre-installed tools
+# Options: node:16-buster-slim, catthehacker/ubuntu:act-latest, catthehacker/ubuntu:full-latest
+-P ubuntu-latest=catthehacker/ubuntu:full-latest
+
+# Default event to trigger (can override with -e flag)
+--defaultbranch main
+
+# Enable verbose output for debugging
+# -v
+
+# Container architecture (use host platform)
+--container-architecture linux/amd64
+
+# Artifact server path (where artifacts are stored locally)
+--artifact-server-path /tmp/artifacts
+
+# Reuse containers between runs (faster but may cause state issues)
+# --reuse
+
+# Bind the Docker socket (required for some actions)
+--bind
+
+# Use GitHub token from environment variable (if available)
+# --secret GITHUB_TOKEN=$GITHUB_TOKEN
+
+# Network mode for containers
+--network bridge
+
+# Set working directory (not supported in older act versions)
+# --workdir /workspace
+
+# Container options
+--container-options "--user=root"
+
+# Job timeout (in minutes)
+# --job-timeout 60

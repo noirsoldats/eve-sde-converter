@@ -3,6 +3,16 @@ sde/
 .venv/
 .cache_hoboleaks/
 .idea/
+.claude/
+
+# Local testing
+.secrets
+.env
+/tmp/artifacts/
+eve.db
+eve-stripped.db
+eve-*.sql
+eve-*.sql.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

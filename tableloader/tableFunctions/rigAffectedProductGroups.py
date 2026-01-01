@@ -186,7 +186,7 @@ def build_producible_group_sets(connection, metadata, activity_id: int) -> Tuple
         .join(invGroups, invGroups.c.groupID == invTypes.c.groupID)
     ).where(
         industryActivityProducts.c.activityID == activity_id,
-        invTypes.c.published == 1,
+        invTypes.c.published == True,  # Use True instead of 1 for PostgreSQL boolean compatibility
         invTypes.c.groupID.isnot(None)
     ).distinct()
 

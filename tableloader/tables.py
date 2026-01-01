@@ -963,7 +963,7 @@ def metadataCreator(schema):
             Column('solarSystemID', INTEGER(),index=True),
             Column('constellationID', INTEGER(),index=True),
             Column('regionID', INTEGER(),index=True),
-            Column('stationName', VARCHAR(length=100)),
+            Column('stationName', VARCHAR(length=200)),
             Column('x', FLOAT(precision=53)),
             Column('y', FLOAT(precision=53)),
             Column('z', FLOAT(precision=53)),

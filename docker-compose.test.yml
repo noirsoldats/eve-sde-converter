@@ -1,0 +1,82 @@
+# Docker Compose configuration for local GitHub Actions workflow testing
+# This file sets up database service containers that mirror the GitHub Actions environment
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: eve-sde-mysql-test
+    environment:
+      MYSQL_DATABASE: evesde
+      MYSQL_USER: evesde
+      MYSQL_PASSWORD: evesdepass
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "evesde", "-pevesdepass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Uncomment to persist data or add custom config
+    # volumes:
+    #   - mysql-data:/var/lib/mysql
+    #   - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - sde-test-network
+
+  postgres:
+    image: postgres:15
+    container_name: eve-sde-postgres-test
+    environment:
+      POSTGRES_DB: evesde
+      POSTGRES_USER: evesde
+      POSTGRES_PASSWORD: evesdepass
+      # Optional: Set locale
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evesde -d evesde"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Uncomment to persist data or add custom config
+    # volumes:
+    #   - postgres-data:/var/lib/postgresql/data
+    #   - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - sde-test-network
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: eve-sde-mssql-test
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      MSSQL_PID: Developer
+      MSSQL_COLLATION: SQL_Latin1_General_CP1_CI_AS
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    # Uncomment to persist data
+    # volumes:
+    #   - mssql-data:/var/opt/mssql
+    networks:
+      - sde-test-network
+
+networks:
+  sde-test-network:
+    driver: bridge
+
+# Uncomment to enable persistent volumes
+# volumes:
+#   mysql-data:
+#   postgres-data:
+#   mssql-data:
