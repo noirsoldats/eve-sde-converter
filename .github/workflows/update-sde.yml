@@ -375,8 +375,9 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
-            cp baseline/eve-sqlite-*.db eve.db
+          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
+            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
+            cp "$SQLITE_FILE" eve.db
             python3 validation/cross_db_validation.py mysql sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
@@ -468,8 +469,9 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
-            cp baseline/eve-sqlite-*.db eve.db
+          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
+            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
+            cp "$SQLITE_FILE" eve.db
             python3 validation/cross_db_validation.py postgres sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
@@ -589,8 +591,9 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
-            cp baseline/eve-sqlite-*.db eve.db
+          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
+            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
+            cp "$SQLITE_FILE" eve.db
             python3 validation/cross_db_validation.py mssql sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
