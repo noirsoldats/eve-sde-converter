@@ -231,6 +231,6 @@ log_info "Output file: $OUTPUT_FILE"
 log_info "File size: $SIZE_HUMAN ($FILE_SIZE bytes)"
 
 # Add metadata comment
-log_info "Metadata: Build $BUILD_NUMBER, Database type: $DB_TYPE, Export date: $(date)"
+log_info "Metadata: Database type: $DB_TYPE, Export date: $(date)"
 
 exit 0
