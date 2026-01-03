@@ -129,6 +129,85 @@ The converter supports multiple database backends. Edit `sdeloader.cfg` to confi
 
 This repository is configured with GitHub Actions to automatically verify the code and build releases. You can find the latest automated builds and source code snapshots under the [Releases](https://github.com/noirsoldats/eve-sde-converter/releases) tab.
 
+### Pre-Built Database Downloads
+
+Each release includes pre-built databases in multiple formats. Simply download and import:
+
+#### SQLite (Recommended for most users)
+
+SQLite databases require no import - just download and use directly:
+
+```bash
+# Download the SQLite database (replace {build} with actual build number)
+wget https://github.com/noirsoldats/eve-sde-converter/releases/download/sde-{build}/eve-sqlite-{build}.db
+
+# Verify the database
+sqlite3 eve-sqlite-{build}.db "SELECT COUNT(*) FROM invTypes;"
+```
+
+**Files available:**
+- `eve-sqlite-{build}.db` - Full database with all SDE data (~200 MB)
+- `eve-sqlite-stripped-{build}.db` - Essential tables only (~50 MB)
+
+#### MySQL
+
+```bash
+# Download the MySQL dump (replace {build} with actual build number)
+wget https://github.com/noirsoldats/eve-sde-converter/releases/download/sde-{build}/eve-mysql-{build}.sql.gz
+
+# Create database
+mysql -u root -p -e "CREATE DATABASE evesde CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Import dump (decompresses on the fly)
+gunzip -c eve-mysql-{build}.sql.gz | mysql -u root -p evesde
+
+# Verify import
+mysql -u root -p evesde -e "SELECT COUNT(*) FROM invTypes;"
+```
+
+**Import time:** ~5-10 minutes depending on system performance.
+
+#### PostgreSQL
+
+```bash
+# Download the PostgreSQL dump (replace {build} with actual build number)
+wget https://github.com/noirsoldats/eve-sde-converter/releases/download/sde-{build}/eve-postgresql-{build}.sql.gz
+
+# Create database
+createdb evesde
+
+# Import dump (decompresses on the fly)
+gunzip -c eve-postgresql-{build}.sql.gz | psql evesde
+
+# Verify import
+psql evesde -c "SELECT COUNT(*) FROM \"invTypes\";"
+```
+
+**Import time:** ~5-10 minutes depending on system performance.
+
+**Note:** Table names in PostgreSQL are case-sensitive. Use double quotes: `"invTypes"` not `invTypes`.
+
+#### Microsoft SQL Server
+
+```bash
+# Download and extract the MSSQL dump (replace {build} with actual build number)
+wget https://github.com/noirsoldats/eve-sde-converter/releases/download/sde-{build}/eve-mssql-{build}.sql.gz
+gunzip eve-mssql-{build}.sql.gz
+
+# Create database (via SQL Server Management Studio or sqlcmd)
+sqlcmd -S localhost -U sa -P YourPassword -Q "CREATE DATABASE evesde"
+
+# Import dump
+sqlcmd -S localhost -U sa -P YourPassword -d evesde -i eve-mssql-{build}.sql
+
+# Verify import
+sqlcmd -S localhost -U sa -P YourPassword -d evesde -Q "SELECT COUNT(*) FROM invTypes;"
+```
+
+**Import time:** ~10-15 minutes depending on system performance.
+
+**Alternative:** You can also use SQL Server Management Studio (SSMS) to import the SQL file via the GUI.
+
 ## Data Included
 
 The converter imports the following data from the SDE:

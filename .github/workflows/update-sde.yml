@@ -207,12 +207,14 @@ jobs:
           echo "SDE ready at: sde/"
           ls -la sde/
 
-      # 5) Run Load.py to generate eve.db & eve-stripped.db
-      - name: Run Load.py for new SDE
+      # 5) Upload SDE as artifact for build-databases job
+      - name: Upload SDE artifact
         if: steps.compare.outputs.update_needed == 'true'
-        run: |
-          echo "Running Load.py for latest SDE..."
-          python3 Load.py sqlite en --create-stripped
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-data
+          path: sde/
+          retention-days: 1
 
       # 6) Determine release version
       - name: Determine release version
@@ -225,10 +227,10 @@ jobs:
           if [ "$IS_MANUAL" = "true" ]; then
             PATCH="${{ steps.calculate_patch.outputs.patch_number }}"
             VERSION_TAG="sde-${BUILD}.${PATCH}"
-            VERSION_NAME="SDE ${BUILD}.${PATCH} SQLite (Patch Release)"
+            VERSION_NAME="SDE ${BUILD}.${PATCH} (Patch Release)"
           else
             VERSION_TAG="sde-${BUILD}"
-            VERSION_NAME="SDE ${BUILD} SQLite"
+            VERSION_NAME="SDE ${BUILD}"
           fi
 
           echo "Release tag:  $VERSION_TAG"
@@ -238,32 +240,210 @@ jobs:
           echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
         shell: bash
 
-      # 7) Upload DBs as artifact for the release job
-      - name: Upload DB artifacts
-        if: steps.compare.outputs.update_needed == 'true'
+  build-databases:
+    needs: check-and-update-sde
+    if: needs.check-and-update-sde.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        database:
+          - type: sqlite
+            engine: sqlite
+            service: none
+          - type: mysql
+            engine: mysql
+            service: mysql
+          - type: postgresql
+            engine: postgres
+            service: postgresql
+          - type: mssql
+            engine: mssql
+            service: mssql
+
+    services:
+      mysql:
+        image: ${{ matrix.database.service == 'mysql' && 'mysql:8.0' || '' }}
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: evesde
+          MYSQL_USER: evesde
+          MYSQL_PASSWORD: evesdepass
+        ports:
+          - 3306:3306
+        options: >-
+          ${{ matrix.database.service == 'mysql' && '--health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3' || '' }}
+
+      postgres:
+        image: ${{ matrix.database.service == 'postgresql' && 'postgres:15' || '' }}
+        env:
+          POSTGRES_DB: evesde
+          POSTGRES_USER: evesde
+          POSTGRES_PASSWORD: evesdepass
+        ports:
+          - 5432:5432
+        options: >-
+          ${{ matrix.database.service == 'postgresql' && '--health-cmd=pg_isready --health-interval=10s --health-timeout=5s --health-retries=3' || '' }}
+
+      mssql:
+        image: ${{ matrix.database.service == 'mssql' && 'mcr.microsoft.com/mssql/server:2022-latest' || '' }}
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: YourStrong!Passw0rd
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          ${{ matrix.database.service == 'mssql' && '--health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q SELECT 1" --health-interval=10s --health-timeout=5s --health-retries=10' || '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SDE artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-data
+          path: sde/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev
+
+          # Install database-specific tools
+          if [ "${{ matrix.database.type }}" = "mysql" ]; then
+            sudo apt-get install -y mysql-client
+          elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
+            sudo apt-get install -y postgresql-client
+          elif [ "${{ matrix.database.type }}" = "mssql" ]; then
+            curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+            curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+            sudo apt-get update
+            sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+            pip install mssql-scripter
+          fi
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for database service
+        if: matrix.database.service != 'none'
+        run: |
+          echo "Waiting for ${{ matrix.database.type }} to be ready..."
+          for i in {1..30}; do
+            if [ "${{ matrix.database.type }}" = "mysql" ]; then
+              mysqladmin ping -h 127.0.0.1 -u evesde -pevesdepass 2>/dev/null && break
+            elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
+              pg_isready -h 127.0.0.1 -U evesde 2>/dev/null && break
+            elif [ "${{ matrix.database.type }}" = "mssql" ]; then
+              /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT 1" 2>/dev/null && break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Create MSSQL database
+        if: matrix.database.type == 'mssql'
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "CREATE DATABASE evesde"
+
+      - name: Run Load.py to populate database
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+
+          if [ "${{ matrix.database.type }}" = "sqlite" ]; then
+            python3 Load.py sqlite en --create-stripped
+          else
+            python3 Load.py ${{ matrix.database.engine }} en
+          fi
+
+      - name: Export database to SQL dump
+        if: matrix.database.type != 'sqlite'
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+          chmod +x scripts/export_database.sh
+
+          # Get connection string from config
+          if [ "${{ matrix.database.type }}" = "mysql" ]; then
+            ./scripts/export_database.sh mysql "mysql+pymysql://evesde:evesdepass@127.0.0.1:3306/evesde?charset=utf8" "eve-mysql-${BUILD}.sql.gz" "${BUILD}"
+          elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
+            ./scripts/export_database.sh postgresql "postgresql+psycopg2://evesde:evesdepass@127.0.0.1:5432/evesde" "eve-postgresql-${BUILD}.sql.gz" "${BUILD}"
+          elif [ "${{ matrix.database.type }}" = "mssql" ]; then
+            ./scripts/export_database.sh mssql "mssql+pymssql://sa:YourStrong!Passw0rd@127.0.0.1:1433/evesde?charset=utf8" "eve-mssql-${BUILD}.sql.gz" "${BUILD}"
+          fi
+
+      - name: Run basic validation
+        run: |
+          python3 validation/basic_validation.py "${{ matrix.database.type }}"
+
+      - name: Run query validation
+        run: |
+          python3 validation/query_validation.py "${{ matrix.database.type }}"
+
+      - name: Wait for SQLite build (for cross-db validation)
+        if: matrix.database.type != 'sqlite'
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: sde-sqlite
+          path: baseline/
+
+      - name: Run cross-database validation
+        if: matrix.database.type != 'sqlite'
+        continue-on-error: true
+        run: |
+          # Only run if SQLite artifact was downloaded
+          if [ -f baseline/eve.db ]; then
+            cp baseline/eve.db eve-baseline.db
+            python3 validation/cross_db_validation.py "${{ matrix.database.type }}" sqlite
+          else
+            echo "SQLite baseline not yet available, skipping cross-db validation"
+          fi
+
+      - name: Rename SQLite files with build number
+        if: matrix.database.type == 'sqlite'
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+          mv eve.db "eve-sqlite-${BUILD}.db"
+          mv eve-stripped.db "eve-sqlite-stripped-${BUILD}.db"
+
+      - name: Upload database artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sde-databases
+          name: sde-${{ matrix.database.type }}
           path: |
-            eve.db
-            eve-stripped.db
+            eve-${{ matrix.database.type }}-*.db
+            eve-${{ matrix.database.type }}-*.sql.gz
           retention-days: 7
 
   create-release:
     runs-on: ubuntu-latest
-    needs: check-and-update-sde
+    needs: [check-and-update-sde, build-databases]
 
     # Only create a release if an update is needed AND we're on main
     if: needs.check-and-update-sde.outputs.update_needed == 'true' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download DB artifact
+      - name: Download all database artifacts
         uses: actions/download-artifact@v4
         with:
-          name: sde-databases
-          path: .
+          pattern: sde-*
+          path: artifacts/
+          merge-multiple: true
 
-      # Now eve.db and eve-stripped.db are present
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -lh artifacts/
 
       - name: Create GitHub Release
         id: create_release
@@ -274,16 +454,33 @@ jobs:
           draft: false
           prerelease: false
           body: |
-            EVE Online Static Data Export databases (SQLite format).
+            EVE Online Static Data Export databases (Multiple formats).
 
             **Build Number:** ${{ needs.check-and-update-sde.outputs.latest_build }}
             **Trigger:** ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Automatic' }}
 
-            Contains:
-            - `eve.db` - Full database with all SDE data
-            - `eve-stripped.db` - Stripped database with essential tables only
-          files: |
-            eve.db
-            eve-stripped.db
+            ## Available Formats
+
+            ### SQLite (Direct use - no import needed)
+            - `eve-sqlite-${{ needs.check-and-update-sde.outputs.latest_build }}.db` - Full database with all SDE data
+            - `eve-sqlite-stripped-${{ needs.check-and-update-sde.outputs.latest_build }}.db` - Essential tables only
+
+            ### MySQL
+            - `eve-mysql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
+            - **Import:** `gunzip -c eve-mysql-*.sql.gz | mysql -u user -p database`
+
+            ### PostgreSQL
+            - `eve-postgresql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
+            - **Import:** `gunzip -c eve-postgresql-*.sql.gz | psql database`
+
+            ### Microsoft SQL Server
+            - `eve-mssql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
+            - **Extract:** `gunzip eve-mssql-*.sql.gz`
+            - **Import:** `sqlcmd -S server -d database -i eve-mssql-*.sql`
+
+            ---
+
+            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for detailed import instructions.
+          files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
