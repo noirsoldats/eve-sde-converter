@@ -101,6 +101,17 @@ def quote_identifier(name, db_type):
         return name
 
 
+def build_limit_clause(db_type, limit, column=None, table=None):
+    """Build database-specific LIMIT clause"""
+    if db_type == 'mssql':
+        # MSSQL uses TOP with SELECT
+        # Returns the SELECT prefix with TOP
+        return f"TOP {limit}"
+    else:
+        # MySQL, PostgreSQL, SQLite use LIMIT at the end
+        return f"LIMIT {limit}"
+
+
 def get_row_count(connection, table, db_type):
     """Get row count for a table"""
     try:
@@ -236,12 +247,26 @@ def compare_sample_data(test_conn, baseline_conn, test_inspector, baseline_inspe
             # Get sample IDs from both databases
             quoted_table_test = quote_identifier(table, test_db_type)
             quoted_pk_test = quote_identifier(pk_col, test_db_type)
-            test_ids_result = test_conn.execute(text(f"SELECT {quoted_pk_test} FROM {quoted_table_test} ORDER BY {quoted_pk_test} LIMIT {sample_size}"))
+
+            # Build database-specific query
+            if test_db_type == 'mssql':
+                test_query = f"SELECT TOP {sample_size} {quoted_pk_test} FROM {quoted_table_test} ORDER BY {quoted_pk_test}"
+            else:
+                test_query = f"SELECT {quoted_pk_test} FROM {quoted_table_test} ORDER BY {quoted_pk_test} LIMIT {sample_size}"
+
+            test_ids_result = test_conn.execute(text(test_query))
             test_ids = set(row[0] for row in test_ids_result)
 
             quoted_table_baseline = quote_identifier(table, baseline_db_type)
             quoted_pk_baseline = quote_identifier(pk_col, baseline_db_type)
-            baseline_ids_result = baseline_conn.execute(text(f"SELECT {quoted_pk_baseline} FROM {quoted_table_baseline} ORDER BY {quoted_pk_baseline} LIMIT {sample_size}"))
+
+            # Build database-specific query
+            if baseline_db_type == 'mssql':
+                baseline_query = f"SELECT TOP {sample_size} {quoted_pk_baseline} FROM {quoted_table_baseline} ORDER BY {quoted_pk_baseline}"
+            else:
+                baseline_query = f"SELECT {quoted_pk_baseline} FROM {quoted_table_baseline} ORDER BY {quoted_pk_baseline} LIMIT {sample_size}"
+
+            baseline_ids_result = baseline_conn.execute(text(baseline_query))
             baseline_ids = set(row[0] for row in baseline_ids_result)
 
             common_ids = test_ids & baseline_ids
