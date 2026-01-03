@@ -282,18 +282,13 @@ jobs:
         run: |
           python3 validation/query_validation.py sqlite
 
-      - name: Rename SQLite files with build number
-        run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
-          mv eve.db "eve-sqlite-${BUILD}.db"
-          mv eve-stripped.db "eve-sqlite-stripped-${BUILD}.db"
-
       - name: Upload database artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sde-sqlite
           path: |
-            eve-sqlite-*.db
+            eve.db
+            eve-stripped.db
           retention-days: 7
 
   build-mysql:
@@ -353,9 +348,8 @@ jobs:
 
       - name: Export database to SQL dump
         run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
           chmod +x scripts/export_database.sh
-          ./scripts/export_database.sh mysql "mysql+pymysql://evesde:evesdepass@127.0.0.1:3306/evesde?charset=utf8" "eve-mysql-${BUILD}.sql.gz" "${BUILD}"
+          ./scripts/export_database.sh mysql "mysql+pymysql://evesde:evesdepass@127.0.0.1:3306/evesde?charset=utf8" "eve-mysql.sql.gz"
 
       - name: Run basic validation
         run: |
@@ -375,9 +369,8 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
-            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
-            cp "$SQLITE_FILE" eve.db
+          if [ -f baseline/eve.db ]; then
+            cp baseline/eve.db eve.db
             python3 validation/cross_db_validation.py mysql sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
@@ -388,7 +381,7 @@ jobs:
         with:
           name: sde-mysql
           path: |
-            eve-mysql-*.sql.gz
+            eve-mysql.sql.gz
           retention-days: 7
 
   build-postgresql:
@@ -447,9 +440,8 @@ jobs:
 
       - name: Export database to SQL dump
         run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
           chmod +x scripts/export_database.sh
-          ./scripts/export_database.sh postgresql "postgresql+psycopg2://evesde:evesdepass@127.0.0.1:5432/evesde" "eve-postgresql-${BUILD}.sql.gz" "${BUILD}"
+          ./scripts/export_database.sh postgresql "postgresql+psycopg2://evesde:evesdepass@127.0.0.1:5432/evesde" "eve-postgresql.sql.gz"
 
       - name: Run basic validation
         run: |
@@ -469,9 +461,8 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
-            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
-            cp "$SQLITE_FILE" eve.db
+          if [ -f baseline/eve.db ]; then
+            cp baseline/eve.db eve.db
             python3 validation/cross_db_validation.py postgres sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
@@ -482,7 +473,7 @@ jobs:
         with:
           name: sde-postgresql
           path: |
-            eve-postgresql-*.sql.gz
+            eve-postgresql.sql.gz
           retention-days: 7
 
   build-mssql:
@@ -569,9 +560,8 @@ jobs:
 
       - name: Export database to SQL dump
         run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
           chmod +x scripts/export_database.sh
-          ./scripts/export_database.sh mssql "mssql+pymssql://sa:YourStrong!Passw0rd@127.0.0.1:1433/evesde?charset=utf8" "eve-mssql-${BUILD}.sql.gz" "${BUILD}"
+          ./scripts/export_database.sh mssql "mssql+pymssql://sa:YourStrong!Passw0rd@127.0.0.1:1433/evesde?charset=utf8" "eve-mssql.sql.gz"
 
       - name: Run basic validation
         run: |
@@ -591,9 +581,8 @@ jobs:
       - name: Run cross-database validation
         continue-on-error: true
         run: |
-          if ls baseline/eve-sqlite-*.db 1>/dev/null 2>&1; then
-            SQLITE_FILE=$(ls baseline/eve-sqlite-*.db | head -1)
-            cp "$SQLITE_FILE" eve.db
+          if [ -f baseline/eve.db ]; then
+            cp baseline/eve.db eve.db
             python3 validation/cross_db_validation.py mssql sqlite
           else
             echo "SQLite baseline not yet available, skipping cross-db validation"
@@ -604,7 +593,7 @@ jobs:
         with:
           name: sde-mssql
           path: |
-            eve-mssql-*.sql.gz
+            eve-mssql.sql.gz
           retention-days: 7
 
   create-release:

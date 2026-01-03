@@ -91,10 +91,21 @@ def get_table_list(inspector):
     return set(inspector.get_table_names())
 
 
-def get_row_count(connection, table):
+def quote_identifier(name, db_type):
+    """Quote identifier for database-specific case sensitivity"""
+    if db_type == 'postgres':
+        return f'"{name}"'
+    elif db_type == 'mssql':
+        return f'[{name}]'
+    else:
+        return name
+
+
+def get_row_count(connection, table, db_type):
     """Get row count for a table"""
     try:
-        result = connection.execute(text(f"SELECT COUNT(*) FROM {table}"))
+        quoted_table = quote_identifier(table, db_type)
+        result = connection.execute(text(f"SELECT COUNT(*) FROM {quoted_table}"))
         return result.scalar()
     except Exception as e:
         log_error(f"Failed to count rows in {table}: {e}")
@@ -157,7 +168,7 @@ def compare_table_lists(test_tables, baseline_tables):
     return True
 
 
-def compare_row_counts(test_conn, baseline_conn, common_tables):
+def compare_row_counts(test_conn, baseline_conn, common_tables, test_db_type, baseline_db_type):
     """Compare row counts for all tables"""
     log_info("\n" + "="*70)
     log_info("COMPARISON 2: Row Counts")
@@ -166,8 +177,8 @@ def compare_row_counts(test_conn, baseline_conn, common_tables):
     mismatches = []
 
     for table in sorted(common_tables):
-        test_count = get_row_count(test_conn, table)
-        baseline_count = get_row_count(baseline_conn, table)
+        test_count = get_row_count(test_conn, table, test_db_type)
+        baseline_count = get_row_count(baseline_conn, table, baseline_db_type)
 
         if test_count == -1 or baseline_count == -1:
             log_error(f"{table}: Failed to get row count")
@@ -189,7 +200,7 @@ def compare_row_counts(test_conn, baseline_conn, common_tables):
         return True
 
 
-def compare_sample_data(test_conn, baseline_conn, common_tables, sample_size=100):
+def compare_sample_data(test_conn, baseline_conn, test_inspector, baseline_inspector, common_tables, test_db_type, baseline_db_type, sample_size=100):
     """Compare sample data from each table"""
     log_info("\n" + "="*70)
     log_info("COMPARISON 3: Sample Data")
@@ -207,27 +218,30 @@ def compare_sample_data(test_conn, baseline_conn, common_tables, sample_size=100
     for table in tables_to_check[:20]:  # Limit to first 20 tables to avoid excessive output
         log_info(f"\nChecking sample data in {table}...")
 
-        # Get primary key
+        # Get primary key using inspector
         try:
-            test_result = test_conn.execute(text(f"PRAGMA table_info({table})"))
-            test_cols = test_result.fetchall() if hasattr(test_result, 'fetchall') else list(test_result)
+            pk_constraint = test_inspector.get_pk_constraint(table)
+            pk_cols = pk_constraint.get('constrained_columns', [])
 
-            # Find PK column
-            pk_col = None
-            for col in test_cols:
-                if len(col) > 5 and col[5] > 0:  # col[5] is pk flag
-                    pk_col = col[1]
-                    break
-
-            if not pk_col:
+            if not pk_cols:
                 log_warning(f"  No primary key found, skipping sample data check")
                 continue
 
+            pk_col = pk_cols[0]  # Use first PK column
+
+            # Get column information
+            columns = test_inspector.get_columns(table)
+            col_names = [col['name'] for col in columns]
+
             # Get sample IDs from both databases
-            test_ids_result = test_conn.execute(text(f"SELECT {pk_col} FROM {table} ORDER BY {pk_col} LIMIT {sample_size}"))
+            quoted_table_test = quote_identifier(table, test_db_type)
+            quoted_pk_test = quote_identifier(pk_col, test_db_type)
+            test_ids_result = test_conn.execute(text(f"SELECT {quoted_pk_test} FROM {quoted_table_test} ORDER BY {quoted_pk_test} LIMIT {sample_size}"))
             test_ids = set(row[0] for row in test_ids_result)
 
-            baseline_ids_result = baseline_conn.execute(text(f"SELECT {pk_col} FROM {table} ORDER BY {pk_col} LIMIT {sample_size}"))
+            quoted_table_baseline = quote_identifier(table, baseline_db_type)
+            quoted_pk_baseline = quote_identifier(pk_col, baseline_db_type)
+            baseline_ids_result = baseline_conn.execute(text(f"SELECT {quoted_pk_baseline} FROM {quoted_table_baseline} ORDER BY {quoted_pk_baseline} LIMIT {sample_size}"))
             baseline_ids = set(row[0] for row in baseline_ids_result)
 
             common_ids = test_ids & baseline_ids
@@ -239,10 +253,10 @@ def compare_sample_data(test_conn, baseline_conn, common_tables, sample_size=100
             # Compare first 10 rows
             mismatches_in_table = 0
             for row_id in list(common_ids)[:10]:
-                test_row_result = test_conn.execute(text(f"SELECT * FROM {table} WHERE {pk_col} = :id"), {"id": row_id})
+                test_row_result = test_conn.execute(text(f"SELECT * FROM {quoted_table_test} WHERE {quoted_pk_test} = :id"), {"id": row_id})
                 test_row = test_row_result.fetchone()
 
-                baseline_row_result = baseline_conn.execute(text(f"SELECT * FROM {table} WHERE {pk_col} = :id"), {"id": row_id})
+                baseline_row_result = baseline_conn.execute(text(f"SELECT * FROM {quoted_table_baseline} WHERE {quoted_pk_baseline} = :id"), {"id": row_id})
                 baseline_row = baseline_row_result.fetchone()
 
                 if test_row and baseline_row:
@@ -257,7 +271,7 @@ def compare_sample_data(test_conn, baseline_conn, common_tables, sample_size=100
                             # Show which columns differ
                             for idx, (test_val, baseline_val) in enumerate(zip(test_values, baseline_values)):
                                 if test_val != baseline_val:
-                                    col_name = test_cols[idx][1] if idx < len(test_cols) else f"col_{idx}"
+                                    col_name = col_names[idx] if idx < len(col_names) else f"col_{idx}"
                                     log_warning(f"    {col_name}: test={test_val}, baseline={baseline_val}")
 
             if mismatches_in_table > 0:
@@ -342,8 +356,8 @@ def main():
     common_tables = test_tables & baseline_tables
 
     if common_tables:
-        results.append(compare_row_counts(test_conn, baseline_conn, common_tables))
-        results.append(compare_sample_data(test_conn, baseline_conn, common_tables, sample_size=100))
+        results.append(compare_row_counts(test_conn, baseline_conn, common_tables, test_db_type, baseline_db_type))
+        results.append(compare_sample_data(test_conn, baseline_conn, test_inspector, baseline_inspector, common_tables, test_db_type, baseline_db_type, sample_size=100))
 
     # Close connections
     test_conn.close()

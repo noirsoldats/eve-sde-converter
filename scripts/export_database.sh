@@ -5,12 +5,12 @@
 # Exports populated databases to SQL dump files with gzip compression
 # Supports MySQL, PostgreSQL, and MSSQL
 #
-# Usage: export_database.sh <db_type> <connection_string> <output_file> <build_number>
+# Usage: export_database.sh <db_type> <connection_string> <output_file>
 #
 # Examples:
-#   ./export_database.sh mysql "mysql+pymysql://user:pass@host/db" "eve-mysql-123456.sql.gz" "123456"
-#   ./export_database.sh postgresql "postgresql+psycopg2://user:pass@host/db" "eve-postgresql-123456.sql.gz" "123456"
-#   ./export_database.sh mssql "mssql+pymssql://user:pass@host/db" "eve-mssql-123456.sql.gz" "123456"
+#   ./export_database.sh mysql "mysql+pymysql://user:pass@host/db" "eve-mysql.sql.gz"
+#   ./export_database.sh postgresql "postgresql+psycopg2://user:pass@host/db" "eve-postgresql.sql.gz"
+#   ./export_database.sh mssql "mssql+pymssql://user:pass@host/db" "eve-mssql.sql.gz"
 #
 
 set -e  # Exit on error
@@ -41,25 +41,22 @@ log_error() {
 }
 
 # Check arguments
-if [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
     log_error "Invalid number of arguments"
-    echo "Usage: $0 <db_type> <connection_string> <output_file> <build_number>"
+    echo "Usage: $0 <db_type> <connection_string> <output_file>"
     echo ""
     echo "Arguments:"
     echo "  db_type           - Database type: mysql, postgresql, or mssql"
     echo "  connection_string - SQLAlchemy connection string"
-    echo "  output_file       - Output file path (e.g., eve-mysql-123456.sql.gz)"
-    echo "  build_number      - SDE build number"
+    echo "  output_file       - Output file path (e.g., eve-mysql.sql.gz)"
     exit 1
 fi
 
 DB_TYPE="$1"
 CONNECTION_STRING="$2"
 OUTPUT_FILE="$3"
-BUILD_NUMBER="$4"
 
 log_info "Exporting $DB_TYPE database to $OUTPUT_FILE"
-log_info "Build number: $BUILD_NUMBER"
 
 # Parse connection string to extract credentials and database info
 # SQLAlchemy format: dialect+driver://username:password@host:port/database?options
