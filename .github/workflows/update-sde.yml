@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only run this job on main
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
 
     outputs:
       update_needed: ${{ steps.compare.outputs.update_needed }}
