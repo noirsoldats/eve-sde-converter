@@ -517,11 +517,18 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libyaml-dev
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get install -y libyaml-dev curl gnupg
+
+          # Add Microsoft package repository (updated method for Ubuntu 22.04+)
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+          sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/22.04/prod.list)"
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+
+          # Install mssql-tools18 (note: tools18, not tools)
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+          # Add mssql-tools18 to PATH
+          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
 
       - name: Install Python dependencies
         run: |
