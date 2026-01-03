@@ -633,21 +633,22 @@ jobs:
             ## Available Formats
 
             ### SQLite (Direct use - no import needed)
-            - `eve-sqlite-${{ needs.check-and-update-sde.outputs.latest_build }}.db` - Full database with all SDE data
-            - `eve-sqlite-stripped-${{ needs.check-and-update-sde.outputs.latest_build }}.db` - Essential tables only
+            - `eve.db` - Full database with all SDE data (~200 MB)
+            - `eve-stripped.db` - Essential tables only (~50 MB)
 
             ### MySQL
-            - `eve-mysql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
-            - **Import:** `gunzip -c eve-mysql-*.sql.gz | mysql -u user -p database`
+            - `eve-mysql.sql.gz` - Full database dump
+            - **Import:** `gunzip -c eve-mysql.sql.gz | mysql -u user -p database`
 
             ### PostgreSQL
-            - `eve-postgresql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
-            - **Import:** `gunzip -c eve-postgresql-*.sql.gz | psql database`
+            - `eve-postgresql.sql.gz` - Full database dump
+            - **Import:** `gunzip -c eve-postgresql.sql.gz | psql database`
+            - **Note:** Table names are case-sensitive. Use double quotes: `"invTypes"`
 
             ### Microsoft SQL Server
-            - `eve-mssql-${{ needs.check-and-update-sde.outputs.latest_build }}.sql.gz` - Full database dump
-            - **Extract:** `gunzip eve-mssql-*.sql.gz`
-            - **Import:** `sqlcmd -S server -d database -i eve-mssql-*.sql`
+            - `eve-mssql.sql.gz` - Full database dump
+            - **Extract:** `gunzip eve-mssql.sql.gz`
+            - **Import:** `sqlcmd -S server -d database -i eve-mssql.sql`
 
             ---
 
