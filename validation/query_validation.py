@@ -81,7 +81,38 @@ def connect_to_database(connection_string):
         sys.exit(1)
 
 
-def run_query_check(connection, check_name, query, expected_count=0, allow_failures=False):
+def quote_identifier(name, db_type):
+    """Quote identifier for database-specific case sensitivity"""
+    if db_type == 'postgres':
+        # PostgreSQL requires double quotes for mixed-case identifiers
+        return f'"{name}"'
+    elif db_type == 'mssql':
+        # MSSQL uses square brackets
+        return f'[{name}]'
+    else:
+        # SQLite and MySQL don't need quoting for our use case
+        return name
+
+
+def build_query(query_template, db_type):
+    """
+    Build a database-specific query by quoting identifiers.
+
+    This function looks for patterns like {table} or {column} and replaces them
+    with properly quoted identifiers for the database type.
+    """
+    import re
+
+    # Find all {identifier} patterns
+    def replace_identifier(match):
+        identifier = match.group(1)
+        return quote_identifier(identifier, db_type)
+
+    # Replace {identifier} with quoted version
+    return re.sub(r'\{([^}]+)\}', replace_identifier, query_template)
+
+
+def run_query_check(connection, check_name, query, expected_count=0, allow_failures=False, db_type='sqlite'):
     """
     Run a validation query and check result
 
@@ -91,11 +122,30 @@ def run_query_check(connection, check_name, query, expected_count=0, allow_failu
         query: SQL query to run
         expected_count: Expected count (0 = expect no violations)
         allow_failures: If True, failures are warnings not errors
+        db_type: Database type for identifier quoting
 
     Returns:
         True if check passed, False otherwise
     """
     try:
+        # For PostgreSQL, automatically quote mixed-case identifiers
+        if db_type == 'postgres':
+            import re
+            # Find table/column names with capital letters and quote them
+            # Matches word boundaries with capital letters
+            def quote_mixed_case(match):
+                word = match.group(0)
+                # Don't quote SQL keywords
+                keywords = {'SELECT', 'COUNT', 'FROM', 'WHERE', 'LEFT', 'JOIN', 'ON', 'IS', 'NULL',
+                           'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'DISTINCT', 'AS', 'BY', 'ORDER', 'GROUP'}
+                if word.upper() in keywords or word.isupper():
+                    return word
+                if any(c.isupper() for c in word):
+                    return f'"{word}"'
+                return word
+
+            query = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', quote_mixed_case, query)
+
         result = connection.execute(text(query))
         count = result.scalar()
 
@@ -114,7 +164,7 @@ def run_query_check(connection, check_name, query, expected_count=0, allow_failu
         return False
 
 
-def validate_data_ranges(connection):
+def validate_data_ranges(connection, db_type):
     """Validate that data falls within expected ranges"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 1: Data Range Checks")
@@ -144,7 +194,7 @@ def validate_data_ranges(connection):
 
     results = []
     for check_name, query, expected, allow_fail in checks:
-        results.append(run_query_check(connection, check_name, query, expected, allow_fail))
+        results.append(run_query_check(connection, check_name, query, expected, allow_fail, db_type))
 
     passed = sum(results)
     total = len(results)
@@ -153,7 +203,7 @@ def validate_data_ranges(connection):
     return all(results)
 
 
-def validate_referential_integrity(connection):
+def validate_referential_integrity(connection, db_type):
     """Validate foreign key relationships"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 2: Referential Integrity")
@@ -191,7 +241,7 @@ def validate_referential_integrity(connection):
 
     results = []
     for check_name, query, expected, allow_fail in checks:
-        results.append(run_query_check(connection, check_name, query, expected, allow_fail))
+        results.append(run_query_check(connection, check_name, query, expected, allow_fail, db_type))
 
     passed = sum(results)
     total = len(results)
@@ -200,7 +250,7 @@ def validate_referential_integrity(connection):
     return all(results)
 
 
-def validate_uniqueness_constraints(connection):
+def validate_uniqueness_constraints(connection, db_type):
     """Validate uniqueness of primary keys and unique columns"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 3: Uniqueness Constraints")
@@ -230,7 +280,7 @@ def validate_uniqueness_constraints(connection):
 
     results = []
     for check_name, query, expected, allow_fail in checks:
-        results.append(run_query_check(connection, check_name, query, expected, allow_fail))
+        results.append(run_query_check(connection, check_name, query, expected, allow_fail, db_type))
 
     passed = sum(results)
     total = len(results)
@@ -239,7 +289,7 @@ def validate_uniqueness_constraints(connection):
     return all(results)
 
 
-def validate_not_null_constraints(connection):
+def validate_not_null_constraints(connection, db_type):
     """Validate critical NOT NULL constraints"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 4: NOT NULL Constraints")
@@ -269,7 +319,7 @@ def validate_not_null_constraints(connection):
 
     results = []
     for check_name, query, expected, allow_fail in checks:
-        results.append(run_query_check(connection, check_name, query, expected, allow_fail))
+        results.append(run_query_check(connection, check_name, query, expected, allow_fail, db_type))
 
     passed = sum(results)
     total = len(results)
@@ -278,7 +328,7 @@ def validate_not_null_constraints(connection):
     return all(results)
 
 
-def validate_eve_specific_sanity(connection):
+def validate_eve_specific_sanity(connection, db_type):
     """EVE Online specific sanity checks"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 5: EVE-Specific Sanity Checks")
@@ -308,7 +358,7 @@ def validate_eve_specific_sanity(connection):
 
     results = []
     for check_name, query, expected, allow_fail in checks:
-        results.append(run_query_check(connection, check_name, query, expected, allow_fail))
+        results.append(run_query_check(connection, check_name, query, expected, allow_fail, db_type))
 
     passed = sum(results)
     total = len(results)
@@ -364,11 +414,11 @@ def main():
 
     # Run validation checks
     results = []
-    results.append(validate_data_ranges(connection))
-    results.append(validate_referential_integrity(connection))
-    results.append(validate_uniqueness_constraints(connection))
-    results.append(validate_not_null_constraints(connection))
-    results.append(validate_eve_specific_sanity(connection))
+    results.append(validate_data_ranges(connection, db_type))
+    results.append(validate_referential_integrity(connection, db_type))
+    results.append(validate_uniqueness_constraints(connection, db_type))
+    results.append(validate_not_null_constraints(connection, db_type))
+    results.append(validate_eve_specific_sanity(connection, db_type))
 
     # Close connection
     connection.close()

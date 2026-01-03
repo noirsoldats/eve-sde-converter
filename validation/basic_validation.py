@@ -98,6 +98,19 @@ def connect_to_database(connection_string):
         sys.exit(1)
 
 
+def quote_identifier(name, db_type):
+    """Quote identifier for database-specific case sensitivity"""
+    if db_type == 'postgres':
+        # PostgreSQL requires double quotes for mixed-case identifiers
+        return f'"{name}"'
+    elif db_type == 'mssql':
+        # MSSQL uses square brackets
+        return f'[{name}]'
+    else:
+        # SQLite and MySQL don't need quoting for our use case
+        return name
+
+
 def validate_table_count(inspector):
     """Validate that sufficient tables exist"""
     log_info("\n" + "="*70)
@@ -144,7 +157,7 @@ def validate_required_tables(inspector):
         return True
 
 
-def validate_row_counts(connection, inspector):
+def validate_row_counts(connection, inspector, db_type):
     """Validate row counts in critical tables"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 3: Row Counts in Critical Tables")
@@ -160,7 +173,9 @@ def validate_row_counts(connection, inspector):
             continue
 
         try:
-            result = connection.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            # Quote table name for database-specific case sensitivity
+            quoted_table = quote_identifier(table, db_type)
+            result = connection.execute(text(f"SELECT COUNT(*) FROM {quoted_table}"))
             count = result.scalar()
 
             if count < expected_min:
@@ -183,18 +198,21 @@ def validate_row_counts(connection, inspector):
         return True
 
 
-def validate_data_presence(connection):
+def validate_data_presence(connection, db_type):
     """Validate that critical data exists"""
     log_info("\n" + "="*70)
     log_info("VALIDATION 4: Data Presence Checks")
     log_info("="*70)
 
+    # Build queries with database-specific quoting
+    q = lambda x: quote_identifier(x, db_type)
+
     checks = [
-        ("invTypes with names", "SELECT COUNT(*) FROM invTypes WHERE typeName IS NOT NULL"),
-        ("invGroups with names", "SELECT COUNT(*) FROM invGroups WHERE groupName IS NOT NULL"),
-        ("Solar systems in region", "SELECT COUNT(DISTINCT regionID) FROM mapSolarSystems"),
-        ("Types with volume data", "SELECT COUNT(*) FROM invTypes WHERE volume > 0"),
-        ("Blueprints with activities", "SELECT COUNT(DISTINCT typeID) FROM industryActivity"),
+        ("invTypes with names", f'SELECT COUNT(*) FROM {q("invTypes")} WHERE {q("typeName")} IS NOT NULL'),
+        ("invGroups with names", f'SELECT COUNT(*) FROM {q("invGroups")} WHERE {q("groupName")} IS NOT NULL'),
+        ("Solar systems in region", f'SELECT COUNT(DISTINCT {q("regionID")}) FROM {q("mapSolarSystems")}'),
+        ("Types with volume data", f'SELECT COUNT(*) FROM {q("invTypes")} WHERE volume > 0'),
+        ("Blueprints with activities", f'SELECT COUNT(DISTINCT {q("typeID")}) FROM {q("industryActivity")}'),
     ]
 
     failures = []
@@ -273,8 +291,8 @@ def main():
     results = []
     results.append(validate_table_count(inspector))
     results.append(validate_required_tables(inspector))
-    results.append(validate_row_counts(connection, inspector))
-    results.append(validate_data_presence(connection))
+    results.append(validate_row_counts(connection, inspector, db_type))
+    results.append(validate_data_presence(connection, db_type))
 
     # Close connection
     connection.close()
