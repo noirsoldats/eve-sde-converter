@@ -497,7 +497,7 @@ jobs:
           MSSQL_PID: Developer
         ports:
           - 1433:1433
-        options: --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -Q 'SELECT 1' -b -V1" --health-interval=10s --health-timeout=10s --health-retries=20
+        options: --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1' -C -b" --health-interval=15s --health-timeout=15s --health-retries=30 --health-start-period=60s
 
     steps:
       - name: Checkout repository
@@ -534,7 +534,7 @@ jobs:
           echo "Waiting for MSSQL to be ready..."
           # Wait up to 2 minutes for MSSQL to fully start
           for i in {1..60}; do
-            if /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT 1" 2>/dev/null; then
+            if /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P YourStrong!Passw0rd -Q "SELECT 1" -C -b 2>/dev/null; then
               echo "MSSQL is ready!"
               break
             fi
@@ -543,16 +543,16 @@ jobs:
           done
 
           # Verify connection one more time
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT @@VERSION"
+          /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P YourStrong!Passw0rd -Q "SELECT @@VERSION" -C -b
 
       - name: Create MSSQL database
         run: |
           echo "Creating evesde database..."
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "CREATE DATABASE evesde"
+          /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P YourStrong!Passw0rd -Q "CREATE DATABASE evesde" -C -b
           echo "Database created successfully"
 
           # Verify database was created
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT name FROM sys.databases WHERE name = 'evesde'"
+          /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P YourStrong!Passw0rd -Q "SELECT name FROM sys.databases WHERE name = 'evesde'" -C -b
 
       - name: Run Load.py to populate database
         run: |
