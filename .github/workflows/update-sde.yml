@@ -240,62 +240,10 @@ jobs:
           echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
         shell: bash
 
-  build-databases:
+  build-sqlite:
     needs: check-and-update-sde
     if: needs.check-and-update-sde.outputs.update_needed == 'true'
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        database:
-          - type: sqlite
-            engine: sqlite
-            service: none
-          - type: mysql
-            engine: mysql
-            service: mysql
-          - type: postgresql
-            engine: postgres
-            service: postgresql
-          - type: mssql
-            engine: mssql
-            service: mssql
-
-    services:
-      mysql:
-        image: ${{ matrix.database.service == 'mysql' && 'mysql:8.0' || '' }}
-        env:
-          MYSQL_ROOT_PASSWORD: rootpassword
-          MYSQL_DATABASE: evesde
-          MYSQL_USER: evesde
-          MYSQL_PASSWORD: evesdepass
-        ports:
-          - 3306:3306
-        options: >-
-          ${{ matrix.database.service == 'mysql' && '--health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3' || '' }}
-
-      postgres:
-        image: ${{ matrix.database.service == 'postgresql' && 'postgres:15' || '' }}
-        env:
-          POSTGRES_DB: evesde
-          POSTGRES_USER: evesde
-          POSTGRES_PASSWORD: evesdepass
-        ports:
-          - 5432:5432
-        options: >-
-          ${{ matrix.database.service == 'postgresql' && '--health-cmd=pg_isready --health-interval=10s --health-timeout=5s --health-retries=3' || '' }}
-
-      mssql:
-        image: ${{ matrix.database.service == 'mssql' && 'mcr.microsoft.com/mssql/server:2022-latest' || '' }}
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: YourStrong!Passw0rd
-          MSSQL_PID: Developer
-        ports:
-          - 1433:1433
-        options: >-
-          ${{ matrix.database.service == 'mssql' && '--health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q SELECT 1" --health-interval=10s --health-timeout=5s --health-retries=10' || '' }}
 
     steps:
       - name: Checkout repository
@@ -317,100 +265,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libyaml-dev
 
-          # Install database-specific tools
-          if [ "${{ matrix.database.type }}" = "mysql" ]; then
-            sudo apt-get install -y mysql-client
-          elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
-            sudo apt-get install -y postgresql-client
-          elif [ "${{ matrix.database.type }}" = "mssql" ]; then
-            curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-            curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-            sudo apt-get update
-            sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
-            pip install mssql-scripter
-          fi
-
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Wait for database service
-        if: matrix.database.service != 'none'
-        run: |
-          echo "Waiting for ${{ matrix.database.type }} to be ready..."
-          for i in {1..30}; do
-            if [ "${{ matrix.database.type }}" = "mysql" ]; then
-              mysqladmin ping -h 127.0.0.1 -u evesde -pevesdepass 2>/dev/null && break
-            elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
-              pg_isready -h 127.0.0.1 -U evesde 2>/dev/null && break
-            elif [ "${{ matrix.database.type }}" = "mssql" ]; then
-              /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT 1" 2>/dev/null && break
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 2
-          done
-
-      - name: Create MSSQL database
-        if: matrix.database.type == 'mssql'
-        run: |
-          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "CREATE DATABASE evesde"
-
       - name: Run Load.py to populate database
         run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
-
-          if [ "${{ matrix.database.type }}" = "sqlite" ]; then
-            python3 Load.py sqlite en --create-stripped
-          else
-            python3 Load.py ${{ matrix.database.engine }} en
-          fi
-
-      - name: Export database to SQL dump
-        if: matrix.database.type != 'sqlite'
-        run: |
-          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
-          chmod +x scripts/export_database.sh
-
-          # Get connection string from config
-          if [ "${{ matrix.database.type }}" = "mysql" ]; then
-            ./scripts/export_database.sh mysql "mysql+pymysql://evesde:evesdepass@127.0.0.1:3306/evesde?charset=utf8" "eve-mysql-${BUILD}.sql.gz" "${BUILD}"
-          elif [ "${{ matrix.database.type }}" = "postgresql" ]; then
-            ./scripts/export_database.sh postgresql "postgresql+psycopg2://evesde:evesdepass@127.0.0.1:5432/evesde" "eve-postgresql-${BUILD}.sql.gz" "${BUILD}"
-          elif [ "${{ matrix.database.type }}" = "mssql" ]; then
-            ./scripts/export_database.sh mssql "mssql+pymssql://sa:YourStrong!Passw0rd@127.0.0.1:1433/evesde?charset=utf8" "eve-mssql-${BUILD}.sql.gz" "${BUILD}"
-          fi
+          python3 Load.py sqlite en --create-stripped
 
       - name: Run basic validation
         run: |
-          python3 validation/basic_validation.py "${{ matrix.database.type }}"
+          python3 validation/basic_validation.py sqlite
 
       - name: Run query validation
         run: |
-          python3 validation/query_validation.py "${{ matrix.database.type }}"
-
-      - name: Wait for SQLite build (for cross-db validation)
-        if: matrix.database.type != 'sqlite'
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: sde-sqlite
-          path: baseline/
-
-      - name: Run cross-database validation
-        if: matrix.database.type != 'sqlite'
-        continue-on-error: true
-        run: |
-          # Only run if SQLite artifact was downloaded
-          if [ -f baseline/eve.db ]; then
-            cp baseline/eve.db eve-baseline.db
-            python3 validation/cross_db_validation.py "${{ matrix.database.type }}" sqlite
-          else
-            echo "SQLite baseline not yet available, skipping cross-db validation"
-          fi
+          python3 validation/query_validation.py sqlite
 
       - name: Rename SQLite files with build number
-        if: matrix.database.type == 'sqlite'
         run: |
           BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
           mv eve.db "eve-sqlite-${BUILD}.db"
@@ -419,15 +291,303 @@ jobs:
       - name: Upload database artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sde-${{ matrix.database.type }}
+          name: sde-sqlite
           path: |
-            eve-${{ matrix.database.type }}-*.db
-            eve-${{ matrix.database.type }}-*.sql.gz
+            eve-sqlite-*.db
+          retention-days: 7
+
+  build-mysql:
+    needs: check-and-update-sde
+    if: needs.check-and-update-sde.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: evesde
+          MYSQL_USER: evesde
+          MYSQL_PASSWORD: evesdepass
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SDE artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-data
+          path: sde/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev mysql-client
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for MySQL service
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -u evesde -pevesdepass 2>/dev/null && break
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run Load.py to populate database
+        run: |
+          python3 Load.py mysql en
+
+      - name: Export database to SQL dump
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+          chmod +x scripts/export_database.sh
+          ./scripts/export_database.sh mysql "mysql+pymysql://evesde:evesdepass@127.0.0.1:3306/evesde?charset=utf8" "eve-mysql-${BUILD}.sql.gz" "${BUILD}"
+
+      - name: Run basic validation
+        run: |
+          python3 validation/basic_validation.py mysql
+
+      - name: Run query validation
+        run: |
+          python3 validation/query_validation.py mysql
+
+      - name: Wait for SQLite build (for cross-db validation)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: sde-sqlite
+          path: baseline/
+
+      - name: Run cross-database validation
+        continue-on-error: true
+        run: |
+          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
+            cp baseline/eve-sqlite-*.db eve.db
+            python3 validation/cross_db_validation.py mysql sqlite
+          else
+            echo "SQLite baseline not yet available, skipping cross-db validation"
+          fi
+
+      - name: Upload database artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-mysql
+          path: |
+            eve-mysql-*.sql.gz
+          retention-days: 7
+
+  build-postgresql:
+    needs: check-and-update-sde
+    if: needs.check-and-update-sde.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: evesde
+          POSTGRES_USER: evesde
+          POSTGRES_PASSWORD: evesdepass
+        ports:
+          - 5432:5432
+        options: --health-cmd=pg_isready --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SDE artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-data
+          path: sde/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev postgresql-client
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for PostgreSQL service
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -U evesde 2>/dev/null && break
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run Load.py to populate database
+        run: |
+          python3 Load.py postgres en
+
+      - name: Export database to SQL dump
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+          chmod +x scripts/export_database.sh
+          ./scripts/export_database.sh postgresql "postgresql+psycopg2://evesde:evesdepass@127.0.0.1:5432/evesde" "eve-postgresql-${BUILD}.sql.gz" "${BUILD}"
+
+      - name: Run basic validation
+        run: |
+          python3 validation/basic_validation.py postgres
+
+      - name: Run query validation
+        run: |
+          python3 validation/query_validation.py postgres
+
+      - name: Wait for SQLite build (for cross-db validation)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: sde-sqlite
+          path: baseline/
+
+      - name: Run cross-database validation
+        continue-on-error: true
+        run: |
+          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
+            cp baseline/eve-sqlite-*.db eve.db
+            python3 validation/cross_db_validation.py postgres sqlite
+          else
+            echo "SQLite baseline not yet available, skipping cross-db validation"
+          fi
+
+      - name: Upload database artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-postgresql
+          path: |
+            eve-postgresql-*.sql.gz
+          retention-days: 7
+
+  build-mssql:
+    needs: check-and-update-sde
+    if: needs.check-and-update-sde.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: YourStrong!Passw0rd
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: --health-cmd="/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1'" --health-interval=10s --health-timeout=5s --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SDE artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-data
+          path: sde/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mssql-scripter
+
+      - name: Wait for MSSQL service
+        run: |
+          echo "Waiting for MSSQL to be ready..."
+          for i in {1..30}; do
+            /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "SELECT 1" 2>/dev/null && break
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Create MSSQL database
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -S 127.0.0.1 -U sa -P 'YourStrong!Passw0rd' -Q "CREATE DATABASE evesde"
+
+      - name: Run Load.py to populate database
+        run: |
+          python3 Load.py mssql en
+
+      - name: Export database to SQL dump
+        run: |
+          BUILD="${{ needs.check-and-update-sde.outputs.latest_build }}"
+          chmod +x scripts/export_database.sh
+          ./scripts/export_database.sh mssql "mssql+pymssql://sa:YourStrong!Passw0rd@127.0.0.1:1433/evesde?charset=utf8" "eve-mssql-${BUILD}.sql.gz" "${BUILD}"
+
+      - name: Run basic validation
+        run: |
+          python3 validation/basic_validation.py mssql
+
+      - name: Run query validation
+        run: |
+          python3 validation/query_validation.py mssql
+
+      - name: Wait for SQLite build (for cross-db validation)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: sde-sqlite
+          path: baseline/
+
+      - name: Run cross-database validation
+        continue-on-error: true
+        run: |
+          if ls baseline/eve-sqlite-*.db 1> /dev/null 2>&1; then
+            cp baseline/eve-sqlite-*.db eve.db
+            python3 validation/cross_db_validation.py mssql sqlite
+          else
+            echo "SQLite baseline not yet available, skipping cross-db validation"
+          fi
+
+      - name: Upload database artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sde-mssql
+          path: |
+            eve-mssql-*.sql.gz
           retention-days: 7
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [check-and-update-sde, build-databases]
+    needs: [check-and-update-sde, build-sqlite, build-mysql, build-postgresql, build-mssql]
 
     # Only create a release if an update is needed AND we're on main
     if: needs.check-and-update-sde.outputs.update_needed == 'true' && github.ref == 'refs/heads/main'
