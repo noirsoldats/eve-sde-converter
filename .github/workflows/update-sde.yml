@@ -604,12 +604,29 @@ jobs:
     if: needs.check-and-update-sde.outputs.update_needed == 'true' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download all database artifacts
+      - name: Download SQLite artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: sde-*
+          name: sde-sqlite
           path: artifacts/
-          merge-multiple: true
+
+      - name: Download MySQL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-mysql
+          path: artifacts/
+
+      - name: Download PostgreSQL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-postgresql
+          path: artifacts/
+
+      - name: Download MSSQL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sde-mssql
+          path: artifacts/
 
       - name: List downloaded artifacts
         run: |
